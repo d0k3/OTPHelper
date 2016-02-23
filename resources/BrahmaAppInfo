@@ -1,0 +1,6 @@
+APP_TITLE = OTPHelper
+APP_DESCRIPTION = Helper tool for the OTP dumping process.
+APP_AUTHOR = d0k3
+
+PAYLOAD_MEM = 1
+VOODOO = 0xF
