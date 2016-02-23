@@ -22,28 +22,6 @@ TitleListInfo titleList[] = {
     { "3DS eShop"             , 0x00040010, { 0x00020900, 0x00021900, 0x00022900, 0x00000000, 0x00027900, 0x00028900 } }
 };
 
-NandFileInfo fileList[] = {
-    { "ticket.db",             "ticket.db",             "DBS        TICKET  DB ",                P_CTRNAND },
-    { "title.db",              "title.db",              "DBS        TITLE   DB ",                P_CTRNAND },
-    { "import.db",             "import.db",             "DBS        IMPORT  DB ",                P_CTRNAND },
-    { "certs.db",              "certs.db",              "DBS        CERTS   DB ",                P_CTRNAND },
-    { "SecureInfo_A",          "SecureInfo",            "RW         SYS        SECURE~?   ",     P_CTRNAND },
-    { "LocalFriendCodeSeed_B", "LocalFriendCodeSeed",   "RW         SYS        LOCALF~?   ",     P_CTRNAND },
-    { "rand_seed",             "rand_seed",             "RW         SYS        RAND_S~?   ",     P_CTRNAND },
-    { "movable.sed",           "movable.sed",           "PRIVATE    MOVABLE SED",                P_CTRNAND },
-    { "seedsave.bin", "seedsave.bin", "DATA       ???????????SYSDATA    0001000F   00000000   ", P_CTRNAND },
-    { "nagsave.bin",  "nagsave.bin",  "DATA       ???????????SYSDATA    0001002C   00000000   ", P_CTRNAND },
-    { "nnidsave.bin", "nnidsave.bin", "DATA       ???????????SYSDATA    00010038   00000000   ", P_CTRNAND }
-};
-
-
-NandFileInfo* GetNandFileInfo(u32 file_id)
-{
-    u32 file_num = 0;
-    for(; !(file_id & (1<<file_num)) && (file_num < 32); file_num++);
-    return (file_num >= 32) ? NULL : &(fileList[file_num]);
-}
-
 u32 SeekFileInNand(u32* offset, u32* size, const char* path, PartitionInfo* partition)
 {
     // poor mans NAND FAT file seeker:
@@ -109,23 +87,6 @@ u32 SeekFileInNand(u32* offset, u32* size, const char* path, PartitionInfo* part
     }
     
     return (found) ? 0 : 1;
-}
-
-u32 DebugSeekFileInNand(u32* offset, u32* size, const char* filename, const char* path, PartitionInfo* partition)
-{
-    Debug("Searching for %s...", filename);
-    if (SeekFileInNand(offset, size, path, partition) != 0) {
-        Debug("Failed!");
-        return 1;
-    }
-    if (*size < 1024)
-        Debug("Found at %08X, size %ub", *offset, *size);
-    else if (*size < 1024 * 1024)
-        Debug("Found at %08X, size %ukB", *offset, *size / 1024);
-    else
-        Debug("Found at %08X, size %uMB", *offset, *size / (1024*1024));
-    
-    return 0;
 }
 
 u32 SeekTitleInNandDb(u32* tid_low, u32* tmd_id, TitleListInfo* title_info)
@@ -235,45 +196,6 @@ u32 DebugSeekTitleInNand(u32* offset_tmd, u32* size_tmd, u32* offset_app, u32* s
         }
         Debug("APP%i found at %08X, size %ukB", i, offset_app[i], size_app[i] / 1024);
     }
-    
-    return 0;
-}
-
-u32 DumpFile(u32 param)
-{
-    NandFileInfo* f_info = GetNandFileInfo(param);
-    PartitionInfo* p_info = GetPartitionInfo(f_info->partition_id);
-    char filename[64];
-    u32 offset;
-    u32 size;
-    
-    if (DebugSeekFileInNand(&offset, &size, f_info->name_l, f_info->path, p_info) != 0)
-        return 1;
-    if (OutputFileNameSelector(filename, f_info->name_l, NULL) != 0)
-        return 1;
-    if (DecryptNandToFile(filename, offset, size, p_info) != 0)
-        return 1;
-    
-    return 0;
-}
-
-u32 InjectFile(u32 param)
-{
-    NandFileInfo* f_info = GetNandFileInfo(param);
-    PartitionInfo* p_info = GetPartitionInfo(f_info->partition_id);
-    char filename[64];
-    u32 offset;
-    u32 size;
-    
-    if (!(param & N_NANDWRITE)) // developer screwup protection
-        return 1;
-    
-    if (DebugSeekFileInNand(&offset, &size, f_info->name_l, f_info->path, p_info) != 0)
-        return 1;
-    if (InputFileNameSelector(filename, f_info->name_s, NULL, NULL, 0, size) != 0)
-        return 1;
-    if (EncryptFileToNand(filename, offset, size, p_info) != 0)
-        return 1;
     
     return 0;
 }

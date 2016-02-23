@@ -25,36 +25,6 @@ typedef struct {
 } __attribute__((packed)) SeedInfo;
 
 typedef struct {
-    u8   ctr[16];
-    u32  size_mb;
-    char filename[180];
-} __attribute__((packed)) SdInfoEntry;
-
-typedef struct {
-    u32 n_entries;
-    SdInfoEntry entries[MAX_ENTRIES];
-} __attribute__((packed, aligned(16))) SdInfo;
-
-typedef struct {
-    u8   ctr[16];
-    u8   keyY[16];
-    u32  size_mb;
-    u8   reserved[4];
-    u32  usesSeedCrypto;
-    u32  uses7xCrypto;
-    u64  titleId;
-    char filename[112];
-} __attribute__((packed)) NcchInfoEntry;
-
-typedef struct {
-    u32 padding;
-    u32 ncch_info_version;
-    u32 n_entries;
-    u8  reserved[4];
-    NcchInfoEntry entries[MAX_ENTRIES];
-} __attribute__((packed, aligned(16))) NcchInfo;
-
-typedef struct {
     u8  signature[0x100];
     u8  magic[0x4];
     u32 size;
@@ -87,21 +57,7 @@ typedef struct {
 } __attribute__((packed, aligned(16))) NcchHeader;
 
 
-u32 GetSdCtr(u8* ctr, const char* path);
-u32 GetSd0x34KeyY(u8* movable_keyY, bool from_nand);
-u32 SdFolderSelector(char* path, u8* keyY);
-u32 SdInfoGen(SdInfo* info, const char* base_path);
 u32 CryptSdToSd(const char* filename, u32 offset, u32 size, CryptBufferInfo* info);
 u32 GetHashFromFile(const char* filename, u32 offset, u32 size, u8* hash);
 u32 CheckHashFromFile(const char* filename, u32 offset, u32 size, u8* hash);
 u32 CryptNcch(const char* filename, u32 offset, u32 size, u64 seedId, u8* encrypt_flags);
-u32 CryptCia(const char* filename, u8* ncch_crypt, bool cia_encrypt, bool cxi_only);
-
-// --> FEATURE FUNCTIONS <--
-u32 NcchPadgen(u32 param);
-u32 SdPadgen(u32 param);
-u32 SdPadgenDirect(u32 param);
-u32 UpdateSeedDb(u32 param);
-u32 CryptGameFiles(u32 param);
-u32 CryptSdFiles(u32 param);
-u32 DecryptSdFilesDirect(u32 param);

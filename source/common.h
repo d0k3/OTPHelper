@@ -39,9 +39,8 @@
     (((v) % (a)) ? ((v) + (a) - ((v) % (a))) : (v))
     
 // work files / directories
-#define GAME_DIR "/D9Game"
-#define WORK_DIR "/Decrypt9"
-#define LOG_FILE "Decrypt9.log"
+// #define WORK_DIR "/Decrypt9"
+#define LOG_FILE "OTPHelper.log"
 
 inline u32 strchrcount(const char* str, char symbol) {
     u32 count = 0;

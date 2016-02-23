@@ -215,8 +215,8 @@ u32 InputFileNameSelector(char* filename, const char* basename, char* extension,
     char* fnlist = (char*) 0x20408000; // allow using 0x80000 byte
     u32 n_names = 0;
     
-    // get the file list - try work directory first
-    if (!GetFileList(WORK_DIR, fnlist, 0x80000, false, true, false) && !GetFileList("/", fnlist, 0x800000, false, true, false)) {
+    // get the file list
+    if (!GetFileList("/", fnlist, 0x800000, false, true, false)) {
         Debug("Failed retrieving the file names list");
         return 1;
     }
@@ -340,25 +340,6 @@ u32 CtrNandPadgen(u32 param)
     };
     strncpy(padInfo.filename, filename, 64);
     if(GetNandCtr(padInfo.ctr, 0xB930000) != 0)
-        return 1;
-
-    return CreatePad(&padInfo);
-}
-
-u32 TwlNandPadgen(u32 param)
-{
-    u32 size_mb = (partitions[0].size + (1024 * 1024) - 1) / (1024 * 1024);
-    Debug("Creating TWLN FAT16 xorpad. Size (MB): %u", size_mb);
-    Debug("Filename: twlnand.fat16.xorpad");
-
-    PadInfo padInfo = {
-        .keyslot = partitions[0].keyslot,
-        .setKeyY = 0,
-        .size_mb = size_mb,
-        .filename = "twlnand.fat16.xorpad",
-        .mode = AES_CNT_TWLNAND_MODE
-    };
-    if(GetNandCtr(padInfo.ctr, partitions[0].offset) != 0)
         return 1;
 
     return CreatePad(&padInfo);
