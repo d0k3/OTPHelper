@@ -113,7 +113,7 @@ u32 SetNand(bool set_emunand, bool force_emunand)
     }
 }
 
-static inline int ReadNandSectors(u32 sector_no, u32 numsectors, u8 *out)
+int ReadNandSectors(u32 sector_no, u32 numsectors, u8 *out)
 {
     if (emunand_header) {
         if (sector_no == 0) {
@@ -127,7 +127,7 @@ static inline int ReadNandSectors(u32 sector_no, u32 numsectors, u8 *out)
     } else return sdmmc_nand_readsectors(sector_no, numsectors, out);
 }
 
-static inline int WriteNandSectors(u32 sector_no, u32 numsectors, u8 *in)
+int WriteNandSectors(u32 sector_no, u32 numsectors, u8 *in)
 {
     if (emunand_header) {
         if (sector_no == 0) {

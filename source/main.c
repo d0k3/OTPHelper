@@ -5,6 +5,7 @@
 #include "i2c.h"
 #include "decryptor/nand.h"
 #include "decryptor/nandfat.h"
+#include "decryptor/otphelper.h"
 
 #define SUBMENU_START 1
 
@@ -13,14 +14,18 @@ MenuInfo menu_n3ds[] =
 {
     {
         #ifndef BUILD_NAME
-        "OTPHelper Main Menu", 4,
+        "OTPHelper Main Menu", 8,
         #else
-        BUILD_NAME, 4,
+        BUILD_NAME, 8,
         #endif
         {
-            { "Dump otp.bin (< 3.0 only)",    NULL,                   0 },
-            { "Switch EmuCTRNAND to slot0x4", NULL,                   0 },
-            { "Switch EmuCTRNAND to slot0x5", NULL,                   0 },
+            { "Dump otp.bin (0x100) (< 3.0)", DumpOtp,                0 },
+            { "Dump otp.bin (0x108) (< 3.0)", DumpOtp,                OTP_BIG },
+            { "Switch EmuCTRNAND to Slot0x4", SwitchCtrNandCrypto,    N_EMUNAND | N_NANDWRITE | OTP_TO_O3DS },
+            { "Switch EmuCTRNAND to Slot0x5", SwitchCtrNandCrypto,    N_EMUNAND | N_NANDWRITE | OTP_TO_N3DS },
+            { "Backup EmuNAND header",        DumpNandHeader,         N_EMUNAND },
+            { "Inject O3DS EmuNAND header",   InjectNandHeader,       N_EMUNAND | N_NANDWRITE | OTP_TO_O3DS },
+            { "Inject N3DS EmuNAND header",   InjectNandHeader,       N_EMUNAND | N_NANDWRITE | OTP_TO_O3DS },
             { "MiniDecrypt9 (submenu)",       NULL,                   SUBMENU_START + 0 },
         }
     },

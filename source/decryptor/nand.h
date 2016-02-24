@@ -14,6 +14,8 @@
 
 #define PG_FORCESLOT4 (1<<0)
 
+// 'blind' NAND dump / restore -> unsure if we will use this
+#define N_BLIND     (1<<28)
 // these three are not handled by the feature functions
 // they have to be handled by the menu system
 #define N_EMUNAND   (1<<29)
@@ -38,6 +40,10 @@ typedef struct {
     u32 keyslot;
     u32 mode;
 } __attribute__((packed)) PartitionInfo;
+
+// external interfaces added:
+int ReadNandSectors(u32 sector_no, u32 numsectors, u8 *out);
+int WriteNandSectors(u32 sector_no, u32 numsectors, u8 *in);
 
 PartitionInfo* GetPartitionInfo(u32 partition_id);
 u32 GetNandCtr(u8* ctr, u32 offset);
