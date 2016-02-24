@@ -37,7 +37,7 @@ u32 CheckNandHeader(u8* header) {
     if (header != NULL) {
         memcpy(lheader, header, 0x200);
     } else {
-        ReadNandSectors(0, 1, lheader);
+        ReadNandHeader(lheader);
     }
     
     if (memcmp(lheader + 0x100, nand_magic_n3ds, 0x60) == 0) {
@@ -96,9 +96,8 @@ u32 SwitchCtrNandCrypto(u32 param)
     for (u32 i = 0; i < size; i += NAND_SECTOR_SIZE * SECTORS_PER_READ) {
         u32 read_bytes = min(NAND_SECTOR_SIZE * SECTORS_PER_READ, (size - i));
         ShowProgress(i, size);
-        // stubbed!!!
         DecryptNandToMem(buffer, offset + i, read_bytes, partition_from);
-        // EncryptMemToNand(buffer, offset + i, read_bytes, partition_to);
+        EncryptMemToNand(buffer, offset + i, read_bytes, partition_to);
     }
     
     return 0;
@@ -110,8 +109,11 @@ u32 DumpNandHeader(u32 param)
     char filename[32];
     bool is_o3ds;
     
-    ReadNandSectors(0, 1, header);
+    Debug("Start");
+    ReadNandHeader(header);
+    Debug("Read");
     u32 nand_hdr_type = CheckNandHeader(header);
+    Debug("Checked");
     if (nand_hdr_type == NAND_HDR_UNK) {
         Debug("NAND header not recognized!");
         return 1;
@@ -120,7 +122,6 @@ u32 DumpNandHeader(u32 param)
     }
     
     snprintf(filename, 31, "NCSD_header_%s.bin", (is_o3ds) ? "o3ds" : "n3ds");
-    Debug("Dumping %s...", filename);
     if (!DebugFileCreate(filename, true))
         return 1;
     if (!DebugFileWrite(header, 0x200, 0)) {
@@ -168,7 +169,7 @@ u32 InjectNandHeader(u32 param)
         return 1;
     }
     
-    // WriteNandSectors(0, 1, header);
+    WriteNandHeader(header);
     
     return 0;
 }

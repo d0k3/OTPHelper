@@ -5,6 +5,7 @@
 #include "decryptor/aes.h"
 #include "decryptor/decryptor.h"
 #include "decryptor/nand.h"
+#include "decryptor/otphelper.h"
 #include "fatfs/sdmmc.h"
 
 // see: http://3dbrew.org/wiki/Flash_Filesystem
@@ -15,7 +16,8 @@ static PartitionInfo partitions[] = {
     { "FIRM0",   {0x46, 0x49, 0x52, 0x4D, 0x00, 0x00, 0x00, 0x00}, 0x0B130000, 0x00400000, 0x6, AES_CNT_CTRNAND_MODE },
     { "FIRM1",   {0x46, 0x49, 0x52, 0x4D, 0x00, 0x00, 0x00, 0x00}, 0x0B530000, 0x00400000, 0x6, AES_CNT_CTRNAND_MODE },
     { "CTRNAND", {0xE9, 0x00, 0x00, 0x43, 0x54, 0x52, 0x20, 0x20}, 0x0B95CA00, 0x2F3E3600, 0x4, AES_CNT_CTRNAND_MODE }, // O3DS
-    { "CTRNAND", {0xE9, 0x00, 0x00, 0x43, 0x54, 0x52, 0x20, 0x20}, 0x0B95AE00, 0x41D2D200, 0x5, AES_CNT_CTRNAND_MODE }  // N3DS
+    { "CTRNAND", {0xE9, 0x00, 0x00, 0x43, 0x54, 0x52, 0x20, 0x20}, 0x0B95AE00, 0x41D2D200, 0x5, AES_CNT_CTRNAND_MODE }, // N3DS
+    { "CTRNAND", {0xE9, 0x00, 0x00, 0x43, 0x54, 0x52, 0x20, 0x20}, 0x0B95AE00, 0x41D2D200, 0x4, AES_CNT_CTRNAND_MODE }  // NO3DS
 };
 
 static u32 emunand_header = 0;
@@ -113,7 +115,7 @@ u32 SetNand(bool set_emunand, bool force_emunand)
     }
 }
 
-int ReadNandSectors(u32 sector_no, u32 numsectors, u8 *out)
+static inline int ReadNandSectors(u32 sector_no, u32 numsectors, u8 *out)
 {
     if (emunand_header) {
         if (sector_no == 0) {
@@ -123,11 +125,11 @@ int ReadNandSectors(u32 sector_no, u32 numsectors, u8 *out)
             numsectors--;
             out += 0x200;
         }
-        return sdmmc_sdcard_readsectors(sector_no + emunand_offset, numsectors, out);
+        return (numsectors) ? sdmmc_sdcard_readsectors(sector_no + emunand_offset, numsectors, out) : 0;
     } else return sdmmc_nand_readsectors(sector_no, numsectors, out);
 }
 
-int WriteNandSectors(u32 sector_no, u32 numsectors, u8 *in)
+static inline int WriteNandSectors(u32 sector_no, u32 numsectors, u8 *in)
 {
     if (emunand_header) {
         if (sector_no == 0) {
@@ -137,8 +139,18 @@ int WriteNandSectors(u32 sector_no, u32 numsectors, u8 *in)
             numsectors--;
             in += 0x200;
         }
-        return sdmmc_sdcard_writesectors(sector_no + emunand_offset, numsectors, in);
+        return (numsectors) ? sdmmc_sdcard_writesectors(sector_no + emunand_offset, numsectors, in) : 0;
     } else return sdmmc_nand_writesectors(sector_no, numsectors, in);
+}
+
+u32 ReadNandHeader(u8* out)
+{
+    return (ReadNandSectors(0, 1, out) == 0) ? 0 : 1;
+}
+
+u32 WriteNandHeader(u8* in)
+{
+    return (WriteNandSectors(0, 1, in) == 0) ? 0 : 1;
 }
 
 u32 OutputFileNameSelector(char* filename, const char* basename, char* extension) {
@@ -306,7 +318,7 @@ PartitionInfo* GetPartitionInfo(u32 partition_id)
     u32 partition_num = 0;
     
     if (partition_id == P_CTRNAND) {
-        partition_num = (GetUnitPlatform() == PLATFORM_3DS) ? 5 : 6;
+        partition_num = (GetUnitPlatform() == PLATFORM_3DS) ? 5 : (CheckNandHeader(NULL) == NAND_HDR_N3DS) ? 6 : 7;
     } else {
         for(; !(partition_id & (1<<partition_num)) && (partition_num < 32); partition_num++);
     }

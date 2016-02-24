@@ -41,12 +41,12 @@ typedef struct {
     u32 mode;
 } __attribute__((packed)) PartitionInfo;
 
-// external interfaces added:
-int ReadNandSectors(u32 sector_no, u32 numsectors, u8 *out);
-int WriteNandSectors(u32 sector_no, u32 numsectors, u8 *in);
-
 PartitionInfo* GetPartitionInfo(u32 partition_id);
 u32 GetNandCtr(u8* ctr, u32 offset);
+
+// external interfaces added:
+u32 ReadNandHeader(u8* out);
+u32 WriteNandHeader(u8* in);
 
 u32 OutputFileNameSelector(char* filename, const char* basename, char* extension);
 u32 InputFileNameSelector(char* filename, const char* basename, char* extension, u8* magic, u32 msize, u32 fsize);
