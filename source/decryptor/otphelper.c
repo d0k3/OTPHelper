@@ -109,11 +109,8 @@ u32 DumpNandHeader(u32 param)
     char filename[32];
     bool is_o3ds;
     
-    Debug("Start");
     ReadNandHeader(header);
-    Debug("Read");
     u32 nand_hdr_type = CheckNandHeader(header);
-    Debug("Checked");
     if (nand_hdr_type == NAND_HDR_UNK) {
         Debug("NAND header not recognized!");
         return 1;
