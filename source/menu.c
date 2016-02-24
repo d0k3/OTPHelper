@@ -109,8 +109,11 @@ void DrawMenu(MenuInfo* currMenu, u32 index, bool fullDraw, bool subMenu)
         DrawStringF(menublock_x1, SCREEN_HEIGHT - 20, top_screen, "SD card: %lluMB/%lluMB & %s", RemainingStorageSpace() / 1024 / 1024, TotalStorageSpace() / 1024 / 1024, (emunand_state == EMUNAND_READY) ? "EmuNAND ready" : (emunand_state == EMUNAND_GATEWAY) ? "GW EmuNAND" : (emunand_state == EMUNAND_REDNAND) ? "RedNAND" : (emunand_state > 3) ? "MultiNAND" : "no EmuNAND");
     }
     
-    if (!top_screen)
+    if (!top_screen) {
         DrawStringF(10, 10, true, "Selected: %-*.*s", 32, 32, currMenu->entries[index].name);
+    } else {
+        DrawStringF(32, 30, false, "*** OTPHelper ***\n \n!!! YOUR WARRANTY ENDS HERE !!!\nIf you don't know exactly what\nthis does and how to use it,\nSTOP HERE, press <START> and get\nyourself properly informed first.\n \nCredits:\n* Archshift (for Decrypt9)\n* plailect (OTP dumping guide)\n* delebile (a9lh installer)\n* all the fearless testers\n* the folks at freenode #Cakey");
+    }
         
     for (u32 i = 0; i < currMenu->n_entries; i++) { // draw menu entries / selection []
         char* name = currMenu->entries[i].name;
