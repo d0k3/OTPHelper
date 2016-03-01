@@ -3,8 +3,7 @@
 #include "common.h"
 
 #define OTP_BIG         (1<<0)
-#define OTP_TO_O3DS     (1<<1)
-#define OTP_TO_N3DS     0
+#define OTP_TO_N3DS     (1<<1)
 
 // return values for NAND header check
 #define NAND_HDR_UNK    0
@@ -18,3 +17,4 @@ u32 DumpOtp(u32 param);
 u32 SwitchCtrNandCrypto(u32 param);
 u32 DumpNandHeader(u32 param);
 u32 InjectNandHeader(u32 param);
+u32 UnbrickNand(u32 param);

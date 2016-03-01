@@ -10,7 +10,8 @@
 #define SUBMENU_START 1
 
 
-MenuInfo menu_n3ds[] =
+#ifdef OLD_MENU
+MenuInfo menu[] =
 {
     {
         #ifndef BUILD_NAME
@@ -21,11 +22,11 @@ MenuInfo menu_n3ds[] =
         {
             { "Dump otp.bin (0x100) (< 3.0)", DumpOtp,                0 },
             { "Dump otp.bin (0x108) (< 3.0)", DumpOtp,                OTP_BIG },
-            { "Switch EmuCTRNAND to Slot0x4", SwitchCtrNandCrypto,    N_EMUNAND | N_NANDWRITE | OTP_TO_O3DS },
+            { "Switch EmuCTRNAND to Slot0x4", SwitchCtrNandCrypto,    N_EMUNAND | N_NANDWRITE },
             { "Switch EmuCTRNAND to Slot0x5", SwitchCtrNandCrypto,    N_EMUNAND | N_NANDWRITE | OTP_TO_N3DS },
             { "Backup EmuNAND header",        DumpNandHeader,         N_EMUNAND },
-            { "Inject O3DS EmuNAND header",   InjectNandHeader,       N_EMUNAND | N_NANDWRITE | OTP_TO_O3DS },
-            { "Inject N3DS EmuNAND header",   InjectNandHeader,       N_EMUNAND | N_NANDWRITE | OTP_TO_O3DS },
+            { "Inject O3DS EmuNAND header",   InjectNandHeader,       N_EMUNAND | N_NANDWRITE },
+            { "Inject N3DS EmuNAND header",   InjectNandHeader,       N_EMUNAND | N_NANDWRITE | OTP_TO_N3DS },
             { "MiniDecrypt9 (submenu)",       NULL,                   SUBMENU_START + 0 },
         }
     },
@@ -71,7 +72,62 @@ MenuInfo menu_n3ds[] =
         NULL, 0, {}, // empty menu to signal end
     }
 };
-
+#elifdef EXEC_OLDSPIDER
+MenuInfo menu[] =
+{
+    {
+        #ifndef BUILD_NAME
+        "OTPHelper FW 2.1 Main Menu", 3,
+        #else
+        BUILD_NAME, 3,
+        #endif
+        {
+            { "Dump otp.bin (0x100) (< 3.0)", DumpOtp,                0 },
+            { "Dump otp.bin (0x108) (< 3.0)", DumpOtp,                OTP_BIG },
+            { "NAND Backup & Restore...",     NULL,                   SUBMENU_START + 0 }
+        }
+    },
+    {
+        "NAND Backup & Restore", 4,
+        {            
+            { "SysNAND Backup",               &DumpNand,              0 },
+            { "SysNAND Restore",              &RestoreNand,           N_NANDWRITE },
+            { "EmuNAND Backup",               &DumpNand,              N_EMUNAND },
+            { "EmuNAND Restore",              &RestoreNand,           N_EMUNAND | N_FORCENAND | N_NANDWRITE }
+        }
+    },
+    {
+        NULL, 0, {}, // empty menu to signal end
+    }
+};
+#else
+MenuInfo menu[] =
+{
+    {
+        #ifndef BUILD_NAME
+        "OTPHelper N3DS Main Menu", 2,
+        #else
+        BUILD_NAME, 2,
+        #endif
+        {
+            { "Unbrick FW 2.1 EmuNAND",       UnbrickNand,            N_EMUNAND | N_NANDWRITE },
+            { "NAND Backup & Restore...",     NULL,                   SUBMENU_START + 0 }
+        }
+    },
+    {
+        "NAND Backup & Restore", 4,
+        {            
+            { "SysNAND Backup",               &DumpNand,              0 },
+            { "SysNAND Restore",              &RestoreNand,           N_NANDWRITE },
+            { "EmuNAND Backup",               &DumpNand,              N_EMUNAND },
+            { "EmuNAND Restore",              &RestoreNand,           N_EMUNAND | N_FORCENAND | N_NANDWRITE }
+        }
+    },
+    {
+        NULL, 0, {}, // empty menu to signal end
+    }
+};
+#endif
 
 void Reboot()
 {
@@ -92,7 +148,7 @@ int main()
     ClearScreenFull(true, true);
     InitFS();
 
-    u32 menu_exit = ProcessMenu(menu_n3ds, SUBMENU_START);
+    u32 menu_exit = ProcessMenu(menu, SUBMENU_START);
     
     DeinitFS();
     (menu_exit == MENU_EXIT_REBOOT) ? Reboot() : PowerOff();

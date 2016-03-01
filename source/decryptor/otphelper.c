@@ -67,7 +67,7 @@ u32 DumpOtp(u32 param)
 u32 SwitchCtrNandCrypto(u32 param)
 {
     u8* buffer = BUFFER_ADDRESS;
-    bool to_o3ds = (param & OTP_TO_O3DS);
+    bool to_o3ds = !(param & OTP_TO_N3DS);
     PartitionInfo* partition_from = (to_o3ds) ? &partition_n3ds : &partition_no3ds;
     PartitionInfo* partition_to = (to_o3ds) ? &partition_no3ds : &partition_n3ds;
     
@@ -134,7 +134,7 @@ u32 InjectNandHeader(u32 param)
 {
     u8* header = BUFFER_ADDRESS;
     char filename[32];
-    bool to_o3ds = (param & OTP_TO_O3DS);
+    bool to_o3ds = !(param & OTP_TO_N3DS);
     
     if (!(param & N_NANDWRITE)) // developer screwup protection
         return 1;
@@ -166,7 +166,21 @@ u32 InjectNandHeader(u32 param)
         return 1;
     }
     
+    Debug("Injecting NAND header...");
     WriteNandHeader(header);
+    
+    return 0;
+}
+
+u32 UnbrickNand(u32 param)
+{   
+    // inject NAND header
+    if (InjectNandHeader(param) != 0)
+        return 1;
+    
+    // switch CTRNAND crypto
+    if (SwitchCtrNandCrypto(param) != 0)
+        return 1;
     
     return 0;
 }
