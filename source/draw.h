@@ -44,6 +44,11 @@
 	#define TOP_SCREEN1 (u8*)(0x20046500)
 	#define BOT_SCREEN0 (u8*)(0x2008CA00)
 	#define BOT_SCREEN1 (u8*)(0x200C4E00)
+#elif defined(EXEC_OLDSPIDER)
+	#define TOP_SCREEN0 (u8*)(0x181E6000)
+	#define TOP_SCREEN1 (u8*)(0x18273000)
+	#define BOT_SCREEN0 (u8*)(0x1848F000)
+	#define BOT_SCREEN1 (u8*)(0x184C7800)
 #else
 	#error "Unknown execution method"
 #endif

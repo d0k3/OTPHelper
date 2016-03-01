@@ -1,4 +1,4 @@
-#ifdef EXEC_BOOTSTRAP
+#if defined EXEC_BOOTSTRAP || defined EXEC_OLDSPIDER
 
 .section ".init"
 .global _start

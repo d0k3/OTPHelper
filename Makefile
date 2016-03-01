@@ -54,6 +54,8 @@ ifeq ($(EXEC_METHOD),GATEWAY)
 	LDFLAGS += --specs=../gateway.specs
 else ifeq ($(EXEC_METHOD),BOOTSTRAP)
 	LDFLAGS += --specs=../bootstrap.specs
+else ifeq ($(EXEC_METHOD),OLDSPIDER)
+	LDFLAGS += --specs=../bootstrap.specs
 endif
 
 LIBS	:=
@@ -108,7 +110,7 @@ export INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
 
 export LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib)
 
-.PHONY: common clean all gateway bootstrap cakehax cakerop brahma release
+.PHONY: common clean all gateway bootstrap cakehax cakerop brahma oldspider release
 
 #---------------------------------------------------------------------------------
 all: brahma
@@ -124,6 +126,10 @@ gateway: common
 	@make --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile EXEC_METHOD=GATEWAY
 	@cp resources/LauncherTemplate.dat $(OUTPUT_D)/Launcher.dat
 	@dd if=$(OUTPUT).bin of=$(OUTPUT_D)/Launcher.dat bs=1497296 seek=1 conv=notrunc
+
+oldspider: common
+	@make --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile EXEC_METHOD=OLDSPIDER
+	@mv $(OUTPUT).bin $(OUTPUT_D)/arm9.bin
 
 bootstrap: common
 	@make --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile EXEC_METHOD=BOOTSTRAP
@@ -148,18 +154,21 @@ brahma: submodules bootstrap
 	
 release:
 	@rm -fr $(BUILD) $(OUTPUT_D) $(RELEASE)
-	@make --no-print-directory gateway
+	@-make --no-print-directory gateway
 	@-make --no-print-directory cakerop
 	@rm -fr $(BUILD) $(OUTPUT).bin $(OUTPUT).elf $(CURDIR)/$(LOADER)/data
-	@-make --no-print-directory brahma
+	@-make --no-print-directory oldspider
+	@rm -fr $(BUILD) $(OUTPUT).elf $(CURDIR)/$(LOADER)/data
+	@make --no-print-directory brahma
 	@[ -d $(RELEASE) ] || mkdir -p $(RELEASE)
 	@[ -d $(RELEASE)/$(TARGET) ] || mkdir -p $(RELEASE)/$(TARGET)
-	@cp $(OUTPUT_D)/Launcher.dat $(RELEASE)
+	@-cp $(OUTPUT_D)/Launcher.dat $(RELEASE)
+	@-cp $(OUTPUT_D)/arm9.bin $(RELEASE)
 	@-cp $(OUTPUT).bin $(RELEASE)
 	@-cp $(OUTPUT).dat $(RELEASE)
 	@-cp $(OUTPUT).nds $(RELEASE)
-	@-cp $(OUTPUT).3dsx $(RELEASE)/$(TARGET)
-	@-cp $(OUTPUT).smdh $(RELEASE)/$(TARGET)
+	@cp $(OUTPUT).3dsx $(RELEASE)/$(TARGET)
+	@cp $(OUTPUT).smdh $(RELEASE)/$(TARGET)
 	@cp $(CURDIR)/README.md $(RELEASE)
 	@-[ ! -n "$(strip $(THEME))" ] || (mkdir $(RELEASE)/$(THEME) && cp $(CURDIR)/resources/$(THEME)/*.bin $(RELEASE)/$(THEME))
 	@-7z a $(RELEASE)/$(TARGET)-`date +'%Y%m%d-%H%M%S'`.zip $(RELEASE)/*
