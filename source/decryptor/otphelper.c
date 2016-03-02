@@ -99,6 +99,7 @@ u32 SwitchCtrNandCrypto(u32 param)
         DecryptNandToMem(buffer, offset + i, read_bytes, partition_from);
         EncryptMemToNand(buffer, offset + i, read_bytes, partition_to);
     }
+    ShowProgress(0, 0);
     
     return 0;
 }
