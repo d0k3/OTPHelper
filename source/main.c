@@ -110,7 +110,7 @@ MenuInfo menu[] =
         BUILD_NAME, 2,
         #endif
         {
-            { "Unbrick FW 2.1 EmuNAND",       UnbrickNand,            N_EMUNAND | N_NANDWRITE },
+            { "Unbrick FW 2.1 EmuNAND",       UnbrickNand,            OTP_FROM_MEM | N_EMUNAND | N_NANDWRITE },
             { "NAND Backup & Restore...",     NULL,                   SUBMENU_START + 0 }
         }
     },

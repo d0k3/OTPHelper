@@ -5,6 +5,7 @@
 #include "decryptor/decryptor.h"
 #include "decryptor/nand.h"
 #include "decryptor/otphelper.h"
+#include "NCSD_header_o3ds_hdr.h"
 
 
 static PartitionInfo partition_n3ds =
@@ -145,16 +146,28 @@ u32 InjectNandHeader(u32 param)
         return 1;
     }
     
-    snprintf(filename, 31, "NCSD_header_%s.bin", (to_o3ds) ? "o3ds" : "n3ds");
-    if (!DebugFileOpen(filename)) {
-        Debug("This file must be placed on your SD card");
-        return 1;
-    }
-    if (!DebugFileRead(header, 0x200, 0)) {
+    if (!(param & OTP_FROM_MEM)) {
+        snprintf(filename, 31, "NCSD_header_%s.bin", (to_o3ds) ? "o3ds" : "n3ds");
+        if (!DebugFileOpen(filename)) {
+            Debug("This file must be placed on your SD card");
+            return 1;
+        }
+        if (!DebugFileRead(header, 0x200, 0)) {
+            FileClose();
+            return 1;
+        }
         FileClose();
-        return 1;
+    } else {
+        if (!to_o3ds) {
+            Debug("You need to provide NCSD_header_n3ds.bin");
+            return 1;
+        }
+        if (NCSD_header_o3ds_hdr_size != 0x200) {
+            Debug("NCSD_header_o3ds bad size: %i", NCSD_header_o3ds_hdr_size);
+            return 1;
+        }
+        memcpy(header, NCSD_header_o3ds_hdr, 0x200);
     }
-    FileClose();
     
     u32 nand_hdr_type = CheckNandHeader(header);
     if (to_o3ds && (nand_hdr_type != NAND_HDR_O3DS)) {
