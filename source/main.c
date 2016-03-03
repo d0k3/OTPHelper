@@ -72,7 +72,7 @@ MenuInfo menu[] =
         NULL, 0, {}, // empty menu to signal end
     }
 };
-#elifdef EXEC_OLDSPIDER
+#elif defined EXEC_OLDSPIDER
 MenuInfo menu[] =
 {
     {
