@@ -176,8 +176,6 @@ u32 InjectNandHeader(u32 param)
     } else if (!to_o3ds && (nand_hdr_type != NAND_HDR_N3DS)) {
         Debug("N3DS NAND header not recognized");
         return 1;
-    } else {
-        return 1;
     }
     
     Debug("Injecting NAND header...");

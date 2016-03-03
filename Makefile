@@ -156,9 +156,9 @@ release:
 	@rm -fr $(BUILD) $(OUTPUT_D) $(RELEASE)
 	@-make --no-print-directory gateway
 	@-make --no-print-directory cakerop
-	@rm -fr $(BUILD) $(OUTPUT).bin $(OUTPUT).elf $(CURDIR)/$(LOADER)/data
+	@rm -fr $(BUILD) $(OUTPUT).bin $(OUTPUT).elf
 	@-make --no-print-directory oldspider
-	@rm -fr $(BUILD) $(OUTPUT).elf $(CURDIR)/$(LOADER)/data
+	@rm -fr $(BUILD) $(OUTPUT).elf
 	@make --no-print-directory brahma
 	@[ -d $(RELEASE) ] || mkdir -p $(RELEASE)
 	@[ -d $(RELEASE)/$(TARGET) ] || mkdir -p $(RELEASE)/$(TARGET)
