@@ -44,7 +44,6 @@ typedef struct {
 PartitionInfo* GetPartitionInfo(u32 partition_id);
 u32 GetNandCtr(u8* ctr, u32 offset);
 
-// external interfaces added:
 u32 ReadNandHeader(u8* out);
 u32 WriteNandHeader(u8* in);
 
@@ -59,9 +58,6 @@ u32 EncryptFileToNand(const char* filename, u32 offset, u32 size, PartitionInfo*
 // --> FEATURE FUNCTIONS <--
 u32 CheckEmuNand(void);
 u32 SetNand(bool set_emunand, bool force_emunand);
-
-u32 CtrNandPadgen(u32 param);
-u32 Firm0Firm1Padgen(u32 param);
 
 u32 DumpNand(u32 param);
 u32 RestoreNand(u32 param);

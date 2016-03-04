@@ -326,56 +326,6 @@ PartitionInfo* GetPartitionInfo(u32 partition_id)
     return (partition_num >= 32) ? NULL : &(partitions[partition_num]);
 }
 
-u32 CtrNandPadgen(u32 param)
-{
-    char* filename = (param & PG_FORCESLOT4) ? "nand.fat16.0x4.xorpad" : "nand.fat16.xorpad";
-    u32 keyslot;
-    u32 nand_size;
-
-    // legacy sizes & offset, to work with 3DSFAT16Tool
-    if (GetUnitPlatform() == PLATFORM_3DS) {
-        keyslot = 0x4;
-        nand_size = 758;
-    } else {
-        keyslot = (param & PG_FORCESLOT4) ? 0x4 : 0x5;
-        nand_size = 1055;
-    }
-
-    Debug("Creating NAND FAT16 xorpad. Size (MB): %u", nand_size);
-    Debug("Filename: %s", filename);
-
-    PadInfo padInfo = {
-        .keyslot = keyslot,
-        .setKeyY = 0,
-        .size_mb = nand_size,
-        .mode = AES_CNT_CTRNAND_MODE
-    };
-    strncpy(padInfo.filename, filename, 64);
-    if(GetNandCtr(padInfo.ctr, 0xB930000) != 0)
-        return 1;
-
-    return CreatePad(&padInfo);
-}
-
-u32 Firm0Firm1Padgen(u32 param)
-{
-    u32 size_mb = (partitions[3].size + partitions[4].size + (1024 * 1024) - 1) / (1024 * 1024);
-    Debug("Creating FIRM0FIRM1 xorpad. Size (MB): %u", size_mb);
-    Debug("Filename: firm0firm1.xorpad");
-
-    PadInfo padInfo = {
-        .keyslot = partitions[3].keyslot,
-        .setKeyY = 0,
-        .size_mb = size_mb,
-        .filename = "firm0firm1.xorpad",
-        .mode = AES_CNT_CTRNAND_MODE
-    };
-    if(GetNandCtr(padInfo.ctr, partitions[3].offset) != 0)
-        return 1;
-
-    return CreatePad(&padInfo);
-}
-
 u32 GetNandCtr(u8* ctr, u32 offset)
 {
     static const char* versions[] = {"4.x", "5.x", "6.x", "7.x", "8.x", "9.x"};
