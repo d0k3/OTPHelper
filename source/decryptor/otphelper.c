@@ -54,7 +54,7 @@ u32 DumpOtp(u32 param)
 {
     u32 otpsize = (param & OTP_BIG) ? 0x108 : 0x100;
     Debug("Dumping otp.bin (%u byte)...", otpsize);
-    if (!DebugFileCreate("otp.bin", true))
+    if (!DebugFileCreate((param & OTP_BIG) ? "otp0x108.bin" : "otp.bin", true))
         return 1;
     if (!DebugFileWrite((void*)0x10012000, otpsize, 0)) {
         FileClose();
