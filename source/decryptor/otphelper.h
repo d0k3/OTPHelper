@@ -15,6 +15,7 @@ u32 CheckNandHeader(u8* header);
 
 // --> FEATURE FUNCTIONS <--
 u32 DumpOtp(u32 param);
+u32 ExpandOtp(u32 param);
 u32 SwitchCtrNandCrypto(u32 param);
 u32 DumpNandHeader(u32 param);
 u32 InjectNandHeader(u32 param);

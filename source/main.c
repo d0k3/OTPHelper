@@ -42,12 +42,13 @@ MenuInfo menu[] =
 {
     {
         #ifndef BUILD_NAME
-        "OTPHelper N3DS Main Menu", 2,
+        "OTPHelper N3DS Main Menu", 3,
         #else
-        BUILD_NAME, 2,
+        BUILD_NAME, 3,
         #endif
         {
             { "Unbrick FW 2.1 EmuNAND",       UnbrickNand,            OTP_FROM_MEM | N_EMUNAND | N_NANDWRITE },
+            { "otp.bin -> otp0x108.bin",      ExpandOtp,              0 },
             { "NAND Backup & Restore...",     NULL,                   SUBMENU_START + 0 }
         }
     },

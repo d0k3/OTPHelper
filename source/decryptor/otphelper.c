@@ -65,6 +65,38 @@ u32 DumpOtp(u32 param)
     return 0;
 }
 
+u32 ExpandOtp(u32 param)
+{
+    u8* buffer = BUFFER_ADDRESS;
+    u32* TwlCustId = (u32*) (0x01FFB808);
+    
+    if (!DebugFileOpen("otp.bin"))
+        return 1;
+    if (FileGetSize() != 0x100) {
+        FileClose();
+        Debug("File has bad size, should be 256 byte");
+        return 1;
+    }
+    if (!DebugFileRead(buffer, 0x100, 0)) {
+        FileClose();
+        return 1;
+    }
+    FileClose();
+    
+    Debug("Appending TWL customer id...");
+    memcpy(buffer + 0x100, (u8*) TwlCustId, 8);
+    
+    if (!DebugFileCreate("otp0x108.bin", true))
+        return 1;
+    if (!DebugFileWrite(buffer, 0x108, 0)) {
+        FileClose();
+        return 1;
+    }
+    FileClose();
+    
+    return 0;
+}
+
 u32 SwitchCtrNandCrypto(u32 param)
 {
     u8* buffer = BUFFER_ADDRESS;
