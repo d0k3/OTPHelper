@@ -69,6 +69,7 @@ u32 ExpandOtp(u32 param)
 {
     u8* buffer = BUFFER_ADDRESS;
     u32* TwlCustId = (u32*) (0x01FFB808);
+    u32 FixCustId[2];
     
     if (!DebugFileOpen("otp.bin"))
         return 1;
@@ -83,8 +84,13 @@ u32 ExpandOtp(u32 param)
     }
     FileClose();
     
-    Debug("Appending TWL customer id...");
-    memcpy(buffer + 0x100, (u8*) TwlCustId, 8);
+    FixCustId[0] = (TwlCustId[0] ^ 0xB358A6AF) | 0x80000000;
+    FixCustId[1] = TwlCustId[1] ^ 0x08C267B7;
+    
+    Debug("TWL Customer ID: %08X%08X", TwlCustId[0], TwlCustId[1]);
+    Debug("Fixed version  : %08X%08X", FixCustId[0], FixCustId[1]);
+    Debug("Appending fixed TWL customer id...");
+    memcpy(buffer + 0x100, (u8*) FixCustId, 8);
     
     if (!DebugFileCreate("otp0x108.bin", true))
         return 1;
