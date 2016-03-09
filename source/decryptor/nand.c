@@ -494,16 +494,17 @@ u32 RestoreNand(u32 param)
     char filename[64];
     u8* buffer = BUFFER_ADDRESS;
     u32 nand_size = getMMCDevice(0)->total_size * NAND_SECTOR_SIZE;
+    u32 nand_hdr_type = NAND_HDR_UNK;
     u32 result = 0;
-    u8 magic[4];
 
     if (!(param & N_NANDWRITE)) // developer screwup protection
         return 1;
         
-    // User file select
+    // user file select
     if (InputFileNameSelector(filename, "NAND.bin", NULL, NULL, 0, nand_size) != 0)
         return 1;
     
+    // safety checks
     if (!DebugFileOpen(filename))
         return 1;
     if (nand_size != FileGetSize()) {
@@ -511,14 +512,37 @@ u32 RestoreNand(u32 param)
         Debug("NAND backup has the wrong size!");
         return 1;
     };
-    if(!DebugFileRead(magic, 4, 0x100)) {
+    if(!DebugFileRead(buffer, 0x200, 0)) {
         FileClose();
         return 1;
     }
-    if (memcmp(magic, "NCSD", 4) != 0) {
+    nand_hdr_type = CheckNandHeader(buffer);
+    if (nand_hdr_type == NAND_HDR_UNK) {
         FileClose();
-        Debug("Not a proper NAND backup!");
+        Debug("NAND header not recognized, bad file!");
         return 1;
+    }
+    for (u32 p_num = 0; p_num < 6; p_num++) {
+        u8 magic[16];
+        PartitionInfo* partition = partitions + p_num;
+        if ((p_num == 5) && (GetUnitPlatform() == PLATFORM_N3DS)) // special N3DS partition types
+            partition = (nand_hdr_type == NAND_HDR_N3DS) ? partitions + 6 : partitions + 7;
+        CryptBufferInfo info = {.keyslot = partition->keyslot, .setKeyY = 0, .size = 16, .buffer = magic, .mode = partition->mode};
+        if(GetNandCtr(info.ctr, partition->offset) != 0) {
+            FileClose();
+            Debug("Magic number checks not possible, stopping here");
+            return 1;
+        }
+        if(!DebugFileRead(magic, 16, partition->offset)) {
+            FileClose();
+            return 1;
+        }
+        CryptBuffer(&info);
+        if ((partition->magic[0] != 0xFF) && (memcmp(partition->magic, magic, 8) != 0)) {
+            FileClose();
+            Debug("Not a proper NAND backup, might be bricked!");
+            return 1;
+        }
     }
     
     Debug("Restoring %sNAND. Size (MB): %u", (param & N_EMUNAND) ? "Emu" : "Sys", nand_size / (1024 * 1024));
