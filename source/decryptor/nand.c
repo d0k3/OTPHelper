@@ -28,66 +28,32 @@ u32 CheckEmuNand(void)
 {
     u8* buffer = BUFFER_ADDRESS;
     u32 nand_size_sectors = getMMCDevice(0)->total_size;
-    u32 multi_sectors = (GetUnitPlatform() == PLATFORM_3DS) ? EMUNAND_MULTI_OFFSET_O3DS : EMUNAND_MULTI_OFFSET_N3DS;
-    u32 ret = EMUNAND_NOT_READY;
 
     // check the MBR for presence of a hidden partition
     sdmmc_sdcard_readsectors(0, 1, buffer);
     u32 hidden_sectors = getle32(buffer + 0x1BE + 0x8);
     
-    for (u32 offset_sector = 0; offset_sector + nand_size_sectors < hidden_sectors; offset_sector += multi_sectors) {
+    if (nand_size_sectors < hidden_sectors) {
         // check for Gateway type EmuNAND
-        sdmmc_sdcard_readsectors(offset_sector + nand_size_sectors, 1, buffer);
-        if (memcmp(buffer + 0x100, "NCSD", 4) == 0) {
-            ret |= EMUNAND_GATEWAY << (2 * (offset_sector / multi_sectors)); 
-            continue;
-        }
+        sdmmc_sdcard_readsectors(nand_size_sectors, 1, buffer);
+        if (memcmp(buffer + 0x100, "NCSD", 4) == 0)
+            return EMUNAND_GATEWAY;
         // check for RedNAND type EmuNAND
-        sdmmc_sdcard_readsectors(offset_sector + 1, 1, buffer);
-        if (memcmp(buffer + 0x100, "NCSD", 4) == 0) {
-            ret |= EMUNAND_REDNAND << (2 * (offset_sector / multi_sectors)); 
-            continue;
-        }
+        sdmmc_sdcard_readsectors(1, 1, buffer);
+        if (memcmp(buffer + 0x100, "NCSD", 4) == 0)
+            return EMUNAND_REDNAND;
         // EmuNAND ready but not set up
-       ret |= EMUNAND_READY << (2 * (offset_sector / multi_sectors)); 
+       return EMUNAND_READY; 
     }
     
-    return ret;
+    return EMUNAND_NOT_READY;
 }
 
 u32 SetNand(bool set_emunand, bool force_emunand)
 {
     if (set_emunand) {
         u32 emunand_state = CheckEmuNand();
-        u32 emunand_count = 0;
-        u32 offset_sector = 0;
-        
-        for (emunand_count = 0; (emunand_state >> (2 * emunand_count)) & 0x3; emunand_count++);
-        if (emunand_count > 1) { // multiple EmuNANDs -> use selector
-            u32 multi_sectors = (GetUnitPlatform() == PLATFORM_3DS) ? EMUNAND_MULTI_OFFSET_O3DS : EMUNAND_MULTI_OFFSET_N3DS;
-            u32 emunand_no = 0;
-            Debug("Use arrow keys and <A> to choose EmuNAND");
-            while (true) {
-                u32 emunandn_state = (emunand_state >> (2 * emunand_no)) & 0x3;
-                offset_sector = emunand_no * multi_sectors;
-                Debug("\rEmuNAND #%u: %s", emunand_no, (emunandn_state == EMUNAND_READY) ? "EmuNAND ready" : (emunandn_state == EMUNAND_GATEWAY) ? "GW EmuNAND" : "RedNAND");
-                // user input routine
-                u32 pad_state = InputWait();
-                if (pad_state & BUTTON_DOWN) {
-                    emunand_no = (emunand_no + 1) % emunand_count;
-                } else if (pad_state & BUTTON_UP) {
-                    emunand_no = (emunand_no) ?  emunand_no - 1 : emunand_count - 1;
-                } else if (pad_state & BUTTON_A) {
-                    Debug("EmuNAND #%u", emunand_no);
-                    emunand_state = emunandn_state;
-                    break;
-                } else if (pad_state & BUTTON_B) {
-                    Debug("(cancelled by user)");
-                    return 2;
-                }
-            }
-        }
-        
+        u32 offset_sector = 1;
         if ((emunand_state == EMUNAND_READY) && force_emunand)
             emunand_state = EMUNAND_GATEWAY;
         switch (emunand_state) {
@@ -172,7 +138,7 @@ u32 OutputFileNameSelector(char* filename, const char* basename, char* extension
     snprintf(bases[2], 63, "%s%s" , (emunand_header) ? "emu" : "sys", bases[0]);
     
     u32 fn_id = (emunand_header) ? 1 : 0;
-    u32 fn_num = (emunand_header) ? (emunand_offset / ((GetUnitPlatform() == PLATFORM_3DS) ? EMUNAND_MULTI_OFFSET_O3DS : EMUNAND_MULTI_OFFSET_N3DS)) : 0;
+    u32 fn_num = 0;
     bool exists = false;
     char extstr[16] = { 0 };
     if (extension)

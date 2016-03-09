@@ -28,10 +28,6 @@
 #define EMUNAND_GATEWAY   2
 #define EMUNAND_REDNAND   3
 
-// these offsets are used by Multi EmuNAND Creator
-#define EMUNAND_MULTI_OFFSET_O3DS 0x00200000
-#define EMUNAND_MULTI_OFFSET_N3DS 0x00400000
-
 typedef struct {
     char name[16];
     u8  magic[8];
