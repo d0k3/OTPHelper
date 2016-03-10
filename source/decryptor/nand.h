@@ -14,6 +14,8 @@
 
 #define PG_FORCESLOT4 (1<<0)
 
+// direct EmuNAND -> SysNAND clone, not for users!
+#define N_DIRECT    (1<<27)
 // 'blind' NAND dump / restore -> unsure if we will use this
 #define N_BLIND     (1<<28)
 // these three are not handled by the feature functions
@@ -23,7 +25,7 @@
 #define N_NANDWRITE (1<<31)
 
 // return values for the CheckEmuNAND() function
-#define EMUNAND_NOT_READY 0 // must be zero
+#define EMUNAND_NOT_READY 0 // must be zero for multi EmuNAND to work
 #define EMUNAND_READY     1
 #define EMUNAND_GATEWAY   2
 #define EMUNAND_REDNAND   3

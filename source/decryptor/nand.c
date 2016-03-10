@@ -119,6 +119,73 @@ u32 WriteNandHeader(u8* in)
     return (WriteNandSectors(0, 1, in) == 0) ? 0 : 1;
 }
 
+u32 CheckNandIntegrity(const char* path)
+{
+    // this only performs safety checks
+    u8* buffer = BUFFER_ADDRESS;
+    u32 nand_size = getMMCDevice(0)->total_size * NAND_SECTOR_SIZE;
+    u32 nand_hdr_type = NAND_HDR_UNK;
+    u32 ret = 0;
+    
+    if (path) {
+        if (!DebugFileOpen(path))
+            return 1;
+        if (nand_size != FileGetSize()) {
+            FileClose();
+            Debug("NAND backup has the wrong size!");
+            return 1;
+        };
+        if(!DebugFileRead(buffer, 0x200, 0)) {
+            FileClose();
+            return 1;
+        }
+    } else {
+        ReadNandHeader(buffer);
+    }
+    
+    nand_hdr_type = (ret == 0) ? CheckNandHeader(buffer) : 0;
+    if ((ret == 0) && (nand_hdr_type == NAND_HDR_UNK)) {
+        Debug("NAND header not recognized!");
+        ret = 1;
+    } else if (nand_hdr_type == NAND_HDR_N3DS) {
+        // Don't allow injecting N3DS type NAND images
+        Debug("This looks like you are trying to inject a");
+        Debug("bricked N3DS NAND image to SysNAND!");
+        Debug("");
+        Debug("Sorry, I can't let you do that, and if I'm right,");
+        Debug("you owe me a beer for saving your 3DS.");
+        ret = 1;
+    }
+    
+    for (u32 p_num = 0; (p_num < 6) && (ret == 0); p_num++) {
+        PartitionInfo* partition = partitions + p_num;
+        if ((p_num == 5) && (GetUnitPlatform() == PLATFORM_N3DS)) // special N3DS partition types
+            partition = (nand_hdr_type == NAND_HDR_N3DS) ? partitions + 6 : partitions + 7;
+        CryptBufferInfo info = {.keyslot = partition->keyslot, .setKeyY = 0, .size = 16, .buffer = buffer, .mode = partition->mode};
+        if(GetNandCtr(info.ctr, partition->offset) != 0) {
+            Debug("Magic number checks not possible, stopping here");
+            ret = 1;
+            break;
+        }
+        if(path) {
+            if (!DebugFileRead(buffer, 16, partition->offset)) {
+                ret = 1;
+                break;
+            }
+        } else ReadNandSectors(partition->offset / 0x200, 1, buffer);
+        CryptBuffer(&info);
+        if ((partition->magic[0] != 0xFF) && (memcmp(partition->magic, buffer, 8) != 0)) {
+            Debug("Not a proper NAND backup, might be bricked!");
+            ret = 1;
+            break;
+        }
+    }
+    
+    if (path) FileClose();
+    
+    return ret;
+}
+
 u32 OutputFileNameSelector(char* filename, const char* basename, char* extension) {
     char bases[3][64] = { 0 };
     char* dotpos = NULL;
@@ -491,75 +558,67 @@ u32 EncryptFileToNand(const char* filename, u32 offset, u32 size, PartitionInfo*
 
 u32 RestoreNand(u32 param)
 {
-    char filename[64];
     u8* buffer = BUFFER_ADDRESS;
     u32 nand_size = getMMCDevice(0)->total_size * NAND_SECTOR_SIZE;
-    u32 nand_hdr_type = NAND_HDR_UNK;
     u32 result = 0;
 
     if (!(param & N_NANDWRITE)) // developer screwup protection
         return 1;
+    
+    if (!(param & N_DIRECT)) {
+        char filename[64];
         
-    // user file select
-    if (InputFileNameSelector(filename, "NAND.bin", NULL, NULL, 0, nand_size) != 0)
-        return 1;
-    
-    // safety checks
-    if (!DebugFileOpen(filename))
-        return 1;
-    if (nand_size != FileGetSize()) {
-        FileClose();
-        Debug("NAND backup has the wrong size!");
-        return 1;
-    };
-    if(!DebugFileRead(buffer, 0x200, 0)) {
-        FileClose();
-        return 1;
-    }
-    nand_hdr_type = CheckNandHeader(buffer);
-    if (nand_hdr_type == NAND_HDR_UNK) {
-        FileClose();
-        Debug("NAND header not recognized, bad file!");
-        return 1;
-    }
-    for (u32 p_num = 0; p_num < 6; p_num++) {
-        u8 magic[16];
-        PartitionInfo* partition = partitions + p_num;
-        if ((p_num == 5) && (GetUnitPlatform() == PLATFORM_N3DS)) // special N3DS partition types
-            partition = (nand_hdr_type == NAND_HDR_N3DS) ? partitions + 6 : partitions + 7;
-        CryptBufferInfo info = {.keyslot = partition->keyslot, .setKeyY = 0, .size = 16, .buffer = magic, .mode = partition->mode};
-        if(GetNandCtr(info.ctr, partition->offset) != 0) {
-            FileClose();
-            Debug("Magic number checks not possible, stopping here");
+        // user file select
+        if (InputFileNameSelector(filename, "NAND.bin", NULL, NULL, 0, nand_size) != 0)
             return 1;
-        }
-        if(!DebugFileRead(magic, 16, partition->offset)) {
-            FileClose();
+        
+        if (CheckNandIntegrity(filename) != 0)
             return 1;
-        }
-        CryptBuffer(&info);
-        if ((partition->magic[0] != 0xFF) && (memcmp(partition->magic, magic, 8) != 0)) {
-            FileClose();
-            Debug("Not a proper NAND backup, might be bricked!");
-            return 1;
-        }
-    }
-    
-    Debug("Restoring %sNAND. Size (MB): %u", (param & N_EMUNAND) ? "Emu" : "Sys", nand_size / (1024 * 1024));
+        
+        Debug("Restoring %sNAND. Size (MB): %u", (param & N_EMUNAND) ? "Emu" : "Sys", nand_size / (1024 * 1024));
 
-    u32 n_sectors = nand_size / NAND_SECTOR_SIZE;
-    for (u32 i = 0; i < n_sectors; i += SECTORS_PER_READ) {
-        u32 read_sectors = min(SECTORS_PER_READ, (n_sectors - i));
-        ShowProgress(i, n_sectors);
-        if(!DebugFileRead(buffer, NAND_SECTOR_SIZE * read_sectors, i * NAND_SECTOR_SIZE)) {
-            result = 1;
-            break;
+        if (!FileOpen(filename))
+            return 1;
+        
+        u32 n_sectors = nand_size / NAND_SECTOR_SIZE;
+        for (u32 i = 0; i < n_sectors; i += SECTORS_PER_READ) {
+            u32 read_sectors = min(SECTORS_PER_READ, (n_sectors - i));
+            ShowProgress(i, n_sectors);
+            if(!DebugFileRead(buffer, NAND_SECTOR_SIZE * read_sectors, i * NAND_SECTOR_SIZE)) {
+                result = 1;
+                break;
+            }
+            WriteNandSectors(i, read_sectors, buffer);
         }
-        WriteNandSectors(i, read_sectors, buffer);
-    }
 
+        FileClose();
+    } else { // this is an ugly hack
+        u32 l_emunand_offset = 0;
+        if (param & N_EMUNAND)
+            return 1;
+        
+        if (SetNand(true, false) != 0)
+            return 1;
+        if (CheckNandIntegrity(NULL) != 0)
+            return 1;
+        ReadNandHeader(buffer);
+        l_emunand_offset = emunand_offset;
+        if (SetNand(false, false) != 0)
+            return 1;
+        
+        Debug("Cloning EmuNAND to %sNAND. Size (MB): %u", (param & N_EMUNAND) ? "Emu" : "Sys", nand_size / (1024 * 1024));
+        
+        u32 n_sectors = nand_size / NAND_SECTOR_SIZE;
+        WriteNandSectors(0, 1, buffer); // write header separately
+        for (u32 i = 0; i < n_sectors; i += SECTORS_PER_READ) {
+            u32 read_sectors = min(SECTORS_PER_READ, (n_sectors - i));
+            ShowProgress(i, n_sectors);
+            sdmmc_sdcard_readsectors(l_emunand_offset + 1, read_sectors, buffer);
+            WriteNandSectors(i, read_sectors, buffer);
+        }
+    }
+    
     ShowProgress(0, 0);
-    FileClose();
 
     return result;
 }

@@ -25,12 +25,13 @@ MenuInfo menu[] =
         }
     },
     {
-        "NAND Backup & Restore", 4,
+        "NAND Backup & Restore", 5,
         {            
             { "SysNAND Backup",               &DumpNand,              0 },
             { "SysNAND Restore",              &RestoreNand,           N_NANDWRITE },
             { "EmuNAND Backup",               &DumpNand,              N_EMUNAND },
-            { "EmuNAND Restore",              &RestoreNand,           N_EMUNAND | N_FORCENAND | N_NANDWRITE }
+            { "EmuNAND Restore",              &RestoreNand,           N_EMUNAND | N_FORCENAND | N_NANDWRITE },
+            { "Clone EmuNAND to SysNAND",     &RestoreNand,           N_DIRECT | N_NANDWRITE }
         }
     },
     {
@@ -53,12 +54,13 @@ MenuInfo menu[] =
         }
     },
     {
-        "NAND Backup & Restore", 4,
+        "NAND Backup & Restore", 5,
         {            
             { "SysNAND Backup",               &DumpNand,              0 },
             { "SysNAND Restore",              &RestoreNand,           N_NANDWRITE },
             { "EmuNAND Backup",               &DumpNand,              N_EMUNAND },
-            { "EmuNAND Restore",              &RestoreNand,           N_EMUNAND | N_FORCENAND | N_NANDWRITE }
+            { "EmuNAND Restore",              &RestoreNand,           N_EMUNAND | N_FORCENAND | N_NANDWRITE },
+            { "Clone EmuNAND to SysNAND",     &RestoreNand,           N_DIRECT | N_NANDWRITE }
         }
     },
     {
