@@ -9,10 +9,10 @@
 #define SUBMENU_START 1
 
 
-#ifdef EXEC_OLDSPIDER
 MenuInfo menu[] =
 {
     {
+        #ifdef EXEC_OLDSPIDER
         #ifndef BUILD_NAME
         "OTPHelper FW 2.1 Main Menu", 3,
         #else
@@ -21,37 +21,22 @@ MenuInfo menu[] =
         {
             { "Dump otp.bin (0x100) (< 3.0)", DumpOtp,                0 },
             { "Dump otp.bin (0x108) (< 3.0)", DumpOtp,                OTP_BIG },
-            { "NAND Backup & Restore...",     NULL,                   SUBMENU_START + 0 }
+            { "NAND Backup & Restore...",     NULL,                   SUBMENU_START + 0 },
+            { "NAND XORpads...",              NULL,                   SUBMENU_START + 1 }
         }
-    },
-    {
-        "NAND Backup & Restore", 5,
-        {            
-            { "SysNAND Backup",               &DumpNand,              0 },
-            { "SysNAND Restore",              &RestoreNand,           N_NANDWRITE },
-            { "EmuNAND Backup",               &DumpNand,              N_EMUNAND },
-            { "EmuNAND Restore",              &RestoreNand,           N_EMUNAND | N_FORCENAND | N_NANDWRITE },
-            { "Clone EmuNAND to SysNAND",     &RestoreNand,           N_DIRECT | N_NANDWRITE }
-        }
-    },
-    {
-        NULL, 0, {}, // empty menu to signal end
-    }
-};
-#else
-MenuInfo menu[] =
-{
-    {
-        #ifndef BUILD_NAME
-        "OTPHelper N3DS Main Menu", 3,
         #else
-        BUILD_NAME, 3,
+        #ifndef BUILD_NAME
+        "OTPHelper N3DS Main Menu", 4,
+        #else
+        BUILD_NAME, 4,
         #endif
         {
             { "Unbrick FW 2.1 EmuNAND",       UnbrickNand,            OTP_FROM_MEM | N_EMUNAND | N_NANDWRITE },
             { "otp.bin -> otp0x108.bin",      ExpandOtp,              0 },
-            { "NAND Backup & Restore...",     NULL,                   SUBMENU_START + 0 }
+            { "NAND Backup & Restore...",     NULL,                   SUBMENU_START + 0 },
+            { "NAND XORpads...",              NULL,                   SUBMENU_START + 1 }
         }
+        #endif
     },
     {
         "NAND Backup & Restore", 5,
@@ -64,10 +49,18 @@ MenuInfo menu[] =
         }
     },
     {
+        "NAND XORpads", 4,
+        {
+            { "CTRNAND Padgen",               &CtrNandPadgen,         0 },
+            { "CTRNAND Padgen (slot 0x4)",    &CtrNandPadgen,         PG_FORCESLOT4 },
+            { "TWLNAND Padgen",               &TwlNandPadgen,         0 },
+            { "FIRM0FIRM1 Padgen",            &Firm0Firm1Padgen,      0 }
+        }
+    },
+    {
         NULL, 0, {}, // empty menu to signal end
     }
 };
-#endif
 
 void Reboot()
 {
