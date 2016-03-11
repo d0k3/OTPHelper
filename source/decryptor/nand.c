@@ -118,7 +118,7 @@ u32 WriteNandHeader(u8* in)
     return (WriteNandSectors(0, 1, in) == 0) ? 0 : 1;
 }
 
-u32 CheckNandIntegrity(const char* path)
+u32 CheckNandIntegrity(const char* path, bool block_key0x05)
 {
     // this only performs safety checks
     u8* buffer = BUFFER_ADDRESS;
@@ -146,11 +146,11 @@ u32 CheckNandIntegrity(const char* path)
     if ((ret == 0) && (nand_hdr_type == NAND_HDR_UNK)) {
         Debug("NAND header not recognized!");
         ret = 1;
-    } else if (nand_hdr_type == NAND_HDR_N3DS) {
+    } else if (block_key0x05 && (nand_hdr_type == NAND_HDR_N3DS)) {
         // Don't allow injecting N3DS type NAND images
         Debug("This is a slot0x5 (N3DS) type NAND image!");
-        Debug("Sorry, you can't inject that, and if I'm");
-        Debug("right you owe me a beer for saving your 3DS.");
+        Debug("Sorry, you can't inject that, and if I");
+        Debug("saved your 3DS, you owe me a beer.");
         ret = 1;
     }
     
@@ -637,8 +637,13 @@ u32 RestoreNand(u32 param)
         if (InputFileNameSelector(filename, "NAND.bin", NULL, NULL, 0, nand_size) != 0)
             return 1;
         
-        if (CheckNandIntegrity(filename) != 0)
+        #ifdef EXEC_OLDSPIDER
+        if (CheckNandIntegrity(filename, false) != 0)
             return 1;
+        #else
+        if (CheckNandIntegrity(filename, true) != 0)
+            return 1;
+        #endif
         
         Debug("Restoring %sNAND. Size (MB): %u", (param & N_EMUNAND) ? "Emu" : "Sys", nand_size / (1024 * 1024));
 
@@ -664,8 +669,13 @@ u32 RestoreNand(u32 param)
         
         if (SetNand(true, false) != 0)
             return 1;
-        if (CheckNandIntegrity(NULL) != 0)
+        #ifdef EXEC_OLDSPIDER
+        if (CheckNandIntegrity(NULL, false) != 0)
             return 1;
+        #else
+        if (CheckNandIntegrity(NULL, true) != 0)
+            return 1;
+        #endif
         ReadNandHeader(buffer);
         l_emunand_offset = emunand_offset;
         if (SetNand(false, false) != 0)
@@ -742,7 +752,7 @@ u32 InjectNandPartition(u32 param)
 u32 ValidateNand(u32 param)
 {
     if (param & N_EMUNAND) {
-        if (CheckNandIntegrity(NULL) != 0)
+        if (CheckNandIntegrity(NULL, false) != 0)
             return 1;
     } else {
         u32 nand_size = getMMCDevice(0)->total_size * NAND_SECTOR_SIZE;
@@ -750,7 +760,7 @@ u32 ValidateNand(u32 param)
         // user file select
         if (InputFileNameSelector(filename, "NAND.bin", NULL, NULL, 0, nand_size) != 0)
             return 1;
-        if (CheckNandIntegrity(filename) != 0)
+        if (CheckNandIntegrity(filename, false) != 0)
             return 1;
     }
     
