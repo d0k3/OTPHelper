@@ -53,7 +53,6 @@ u32 SetNand(bool set_emunand, bool force_emunand)
 {
     if (set_emunand) {
         u32 emunand_state = CheckEmuNand();
-        u32 offset_sector = 1;
         if ((emunand_state == EMUNAND_READY) && force_emunand)
             emunand_state = EMUNAND_GATEWAY;
         switch (emunand_state) {
@@ -61,13 +60,13 @@ u32 SetNand(bool set_emunand, bool force_emunand)
                 Debug("SD is not formatted for EmuNAND");
                 return 1;
             case EMUNAND_GATEWAY:
-                emunand_header = offset_sector + getMMCDevice(0)->total_size;
-                emunand_offset = offset_sector;
+                emunand_header = getMMCDevice(0)->total_size;
+                emunand_offset = 0;
                 Debug("Using EmuNAND @ %06X/%06X", emunand_header, emunand_offset);
                 return 0;
             case EMUNAND_REDNAND:
-                emunand_header = offset_sector + 1;
-                emunand_offset = offset_sector + 1;
+                emunand_header = 1;
+                emunand_offset = 1;
                 Debug("Using RedNAND @ %06X/%06X", emunand_header, emunand_offset);
                 return 0;
             default:
