@@ -148,9 +148,8 @@ u32 CheckNandIntegrity(const char* path)
         ret = 1;
     } else if (nand_hdr_type == NAND_HDR_N3DS) {
         // Don't allow injecting N3DS type NAND images
-        Debug("This looks like you are trying to inject a");
-        Debug("bricked N3DS NAND image to SysNAND!");
-        Debug("Sorry, I can't let you do that, and if I'm");
+        Debug("This is a slot0x5 (N3DS) type NAND image!");
+        Debug("Sorry, you can't inject that, and if I'm");
         Debug("right you owe me a beer for saving your 3DS.");
         ret = 1;
     }
@@ -185,6 +184,7 @@ u32 CheckNandIntegrity(const char* path)
 }
 
 u32 OutputFileNameSelector(char* filename, const char* basename, char* extension) {
+    const char* statestr[] = { "", "_original", "_formatted", "_bricked", "_unbricked" };
     char bases[3][64] = { 0 };
     char* dotpos = NULL;
     
@@ -210,10 +210,8 @@ u32 OutputFileNameSelector(char* filename, const char* basename, char* extension
         snprintf(extstr, 15, ".%s", extension);
     Debug("Use arrow keys and <A> to choose a name");
     while (true) {
-        char numstr[2] = { 0 };
         // build and output file name (plus "(!)" if existing)
-        numstr[0] = (fn_num > 0) ? '0' + fn_num : '\0';
-        snprintf(filename, 63, "%s%s%s", bases[fn_id], numstr, extstr);
+        snprintf(filename, 63, "%s%s%s", bases[fn_id], statestr[fn_num], extstr);
         if ((exists = FileOpen(filename)))
             FileClose();
         Debug("\r%s%s", filename, (exists) ? " (!)" : "");
@@ -223,7 +221,7 @@ u32 OutputFileNameSelector(char* filename, const char* basename, char* extension
             fn_id = (fn_id + 1) % 3;
         } else if (pad_state & BUTTON_UP) { // decrement filename id
             fn_id = (fn_id > 0) ? fn_id - 1 : 2;
-        } else if ((pad_state & BUTTON_RIGHT) && (fn_num < 9)) { // increment number
+        } else if ((pad_state & BUTTON_RIGHT) && (fn_num < 4)) { // increment number
             fn_num++;
         } else if ((pad_state & BUTTON_LEFT) && (fn_num > 0)) { // decrement number
             fn_num--;
