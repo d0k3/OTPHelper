@@ -740,3 +740,21 @@ u32 InjectNandPartition(u32 param)
     
     return EncryptFileToNand(filename, p_info->offset, p_info->size, p_info);
 }
+
+u32 ValidateNand(u32 param)
+{
+    if (param & N_EMUNAND) {
+        if (CheckNandIntegrity(NULL) != 0)
+            return 1;
+    } else {
+        u32 nand_size = getMMCDevice(0)->total_size * NAND_SECTOR_SIZE;
+        char filename[64];
+        // user file select
+        if (InputFileNameSelector(filename, "NAND.bin", NULL, NULL, 0, nand_size) != 0)
+            return 1;
+        if (CheckNandIntegrity(filename) != 0)
+            return 1;
+    }
+    
+    return 0;
+}

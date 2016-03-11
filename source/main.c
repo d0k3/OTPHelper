@@ -31,7 +31,7 @@ MenuInfo menu[] =
         BUILD_NAME, 4,
         #endif
         {
-            { "Unbrick FW 2.1 EmuNAND",       UnbrickNand,            OTP_FROM_MEM | N_EMUNAND | N_NANDWRITE },
+            { "Unbrick FW 2.1 EmuNAND",       UnbrickNand,            HDR_FROM_MEM | N_EMUNAND | N_NANDWRITE },
             { "otp.bin -> otp0x108.bin",      ExpandOtp,              0 },
             { "NAND Backup & Restore...",     NULL,                   SUBMENU_START + 0 },
             { "NAND XORpads...",              NULL,                   SUBMENU_START + 1 }
@@ -39,13 +39,15 @@ MenuInfo menu[] =
         #endif
     },
     {
-        "NAND Backup & Restore", 5,
+        "NAND Backup & Restore", 7,
         {            
             { "SysNAND Backup",               &DumpNand,              0 },
             { "SysNAND Restore",              &RestoreNand,           N_NANDWRITE },
             { "EmuNAND Backup",               &DumpNand,              N_EMUNAND },
             { "EmuNAND Restore",              &RestoreNand,           N_EMUNAND | N_FORCENAND | N_NANDWRITE },
-            { "Clone EmuNAND to SysNAND",     &RestoreNand,           N_DIRECT | N_NANDWRITE }
+            { "Clone EmuNAND to SysNAND",     &RestoreNand,           N_DIRECT | N_NANDWRITE },
+            { "Validate NAND Backup",         &ValidateNand,          0 },
+            { "Validate EmuNAND",             &ValidateNand,          N_EMUNAND }
         }
     },
     {
