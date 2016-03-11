@@ -224,12 +224,12 @@ u32 InjectNandHeader(u32 param)
 
 u32 UnbrickNand(u32 param)
 {   
-    // inject NAND header
-    if (InjectNandHeader(param) != 0)
-        return 1;
-    
     // switch CTRNAND crypto
     if (SwitchCtrNandCrypto(param) != 0)
+        return 1;
+    
+    // inject NAND header
+    if (InjectNandHeader(param) != 0)
         return 1;
     
     return 0;
