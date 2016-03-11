@@ -125,7 +125,7 @@ u32 SwitchCtrNandCrypto(u32 param)
     if (DecryptNandToMem(buffer, p_chk.offset, 16, &p_chk) != 0)
         return 1;
     if (memcmp(p_chk.magic, buffer, 8) != 0) {
-        Debug("CTRNAND is not slot0x%u encrypted!", (to_o3ds) ? 5 : 4);
+        Debug("CTRNAND is not slot0x%u encrypted!", p_chk.keyslot);
         return 1;
     }
     
@@ -184,7 +184,7 @@ u32 InjectNandHeader(u32 param)
         return 1;
     }
     
-    if (!(param & OTP_FROM_MEM)) {
+    if (!(param & HDR_FROM_MEM)) {
         snprintf(filename, 31, "NCSD_header_%s.bin", (to_o3ds) ? "o3ds" : "n3ds");
         if (!DebugFileOpen(filename)) {
             Debug("This file must be placed on your SD card");
