@@ -151,9 +151,8 @@ u32 CheckNandIntegrity(const char* path)
         // Don't allow injecting N3DS type NAND images
         Debug("This looks like you are trying to inject a");
         Debug("bricked N3DS NAND image to SysNAND!");
-        Debug("");
-        Debug("Sorry, I can't let you do that, and if I'm right,");
-        Debug("you owe me a beer for saving your 3DS.");
+        Debug("Sorry, I can't let you do that, and if I'm");
+        Debug("right you owe me a beer for saving your 3DS.");
         ret = 1;
     }
     
