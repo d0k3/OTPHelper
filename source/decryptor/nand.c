@@ -3,6 +3,7 @@
 #include "hid.h"
 #include "platform.h"
 #include "decryptor/aes.h"
+#include "decryptor/sha.h"
 #include "decryptor/decryptor.h"
 #include "decryptor/nand.h"
 #include "decryptor/otphelper.h"
@@ -19,6 +20,8 @@ static PartitionInfo partitions[] = {
     { "CTRNAND", {0xE9, 0x00, 0x00, 0x43, 0x54, 0x52, 0x20, 0x20}, 0x0B95AE00, 0x41D2D200, 0x5, AES_CNT_CTRNAND_MODE }, // N3DS
     { "CTRNAND", {0xE9, 0x00, 0x00, 0x43, 0x54, 0x52, 0x20, 0x20}, 0x0B95AE00, 0x41D2D200, 0x4, AES_CNT_CTRNAND_MODE }  // NO3DS
 };
+
+static u8 whatisthis[16] = { 0x5D, 0xED, 0x13, 0xB3, 0xDF, 0xF8, 0x27, 0xD8, 0x1D, 0x0D, 0xF1, 0x19, 0x0D, 0x00, 0xEE, 0xAC };
 
 static u32 emunand_header = 0;
 static u32 emunand_offset = 0;
@@ -159,7 +162,7 @@ u32 CheckNandIntegrity(const char* path, bool block_key0x05)
         if ((p_num == 5) && (GetUnitPlatform() == PLATFORM_N3DS)) // special N3DS partition types
             partition = (nand_hdr_type == NAND_HDR_N3DS) ? partitions + 6 : partitions + 7;
         CryptBufferInfo info = {.keyslot = partition->keyslot, .setKeyY = 0, .size = 16, .buffer = buffer, .mode = partition->mode};
-        if(GetNandCtr(info.ctr, partition->offset) != 0) {
+        if(SetupNandCrypto(info.ctr, partition->offset) != 0) {
             Debug("Magic number checks not possible, stopping here");
             ret = 1;
             break;
@@ -355,55 +358,50 @@ PartitionInfo* GetPartitionInfo(u32 partition_id)
     return (partition_num >= 32) ? NULL : &(partitions[partition_num]);
 }
 
-u32 GetNandCtr(u8* ctr, u32 offset)
+u32 SetupNandCrypto(u8* ctr, u32 offset)
 {
-    static const char* versions[] = {"4.x", "5.x", "6.x", "7.x", "8.x", "9.x"};
-    static const u8* version_ctrs[] = {
-        (u8*)0x080D7CAC,
-        (u8*)0x080D858C,
-        (u8*)0x080D748C,
-        (u8*)0x080D740C,
-        (u8*)0x080D74CC,
-        (u8*)0x080D794C
-    };
-    static const u32 version_ctrs_len = sizeof(version_ctrs) / sizeof(u32);
-    static u8* ctr_start = NULL;
+    static bool initial_setup_done = false;
+    static u8 CtrNandCtr[16];
+    static u8 TwlNandCtr[16];
     
-    if (ctr_start == NULL) {
-        for (u32 i = 0; i < version_ctrs_len; i++) {
-            if (*(u32*)version_ctrs[i] == 0x5C980) {
-                Debug("System version %s", versions[i]);
-                ctr_start = (u8*) version_ctrs[i] + 0x30;
-            }
+    if (!initial_setup_done) {
+        // part #1: CTRNAND/TWL CTR
+        u8 NandCid[16];
+        u8 shasum[32];
+        
+        sdmmc_get_cid( 1, (uint32_t*) NandCid);
+        sha_init(SHA256_MODE);
+        sha_update(NandCid, 16);
+        sha_get(shasum);
+        memcpy(CtrNandCtr, shasum, 16);
+        
+        sha_init(SHA1_MODE);
+        sha_update(NandCid, 16);
+        sha_get(shasum);
+        for(u32 i = 0; i < 16; i++) // little endian and reversed order
+            TwlNandCtr[i] = shasum[15-i];
+        
+        Debug("NAND CID: %08X%08X%08X%08X", getbe32(NandCid), getbe32(NandCid+4), getbe32(NandCid+8), getbe32(NandCid+12));
+        
+        // part #3: CTRNAND N3DS KEY
+        while (GetUnitPlatform() == PLATFORM_N3DS) {
+            u8 CtrNandKeyY[16];
+            CryptBufferInfo info = {.keyslot = 0x06, .setKeyY = 0, .size = 16, .buffer = CtrNandKeyY, .mode = AES_CNT_CTRNAND_MODE};
+            memset(info.ctr, 0x00, 16);
+            
+            memcpy(CtrNandKeyY, whatisthis, 16);
+            CryptBuffer(&info);
+            
+            setup_aeskeyY(0x05, CtrNandKeyY);
+            use_aeskey(0x05);
+            break;
         }
         
-        // If value not in previous list start memory scanning (test range)
-        if (ctr_start == NULL) {
-            for (u8* c = (u8*) 0x080D8FFF; c > (u8*) 0x08000000; c--) {
-                if (*(u32*)c == 0x5C980 && *(u32*)(c + 1) == 0x800005C9) {
-                    ctr_start = c + 0x30;
-                    Debug("CTR start 0x%08X", ctr_start);
-                    break;
-                }
-            }
-        }
-        
-        if (ctr_start == NULL) {
-            Debug("CTR start not found!");
-            return 1;
-        }
+        initial_setup_done = true;
     }
     
-    // the ctr is stored backwards in memory
-    if (offset >= 0x0B100000) { // CTRNAND/AGBSAVE region
-        for (u32 i = 0; i < 16; i++)
-            ctr[i] = *(ctr_start + (0xF - i));
-    } else { // TWL region
-        for (u32 i = 0; i < 16; i++)
-            ctr[i] = *(ctr_start + 0x88 + (0xF - i));
-    }
-    
-    // increment counter
+    // get the correct CTR and increment counter
+    memcpy(ctr, (offset >= 0x0B100000) ? CtrNandCtr : TwlNandCtr, 16);
     add_ctr(ctr, offset / 0x10);
 
     return 0;
@@ -434,7 +432,7 @@ u32 CtrNandPadgen(u32 param)
         .mode = AES_CNT_CTRNAND_MODE
     };
     strncpy(padInfo.filename, filename, 64);
-    if(GetNandCtr(padInfo.ctr, 0xB930000) != 0)
+    if(SetupNandCrypto(padInfo.ctr, 0xB930000) != 0)
         return 1;
 
     return CreatePad(&padInfo);
@@ -453,7 +451,7 @@ u32 TwlNandPadgen(u32 param)
         .filename = "twlnand.fat16.xorpad",
         .mode = AES_CNT_TWLNAND_MODE
     };
-    if(GetNandCtr(padInfo.ctr, partitions[0].offset) != 0)
+    if(SetupNandCrypto(padInfo.ctr, partitions[0].offset) != 0)
         return 1;
 
     return CreatePad(&padInfo);
@@ -472,7 +470,7 @@ u32 Firm0Firm1Padgen(u32 param)
         .filename = "firm0firm1.xorpad",
         .mode = AES_CNT_CTRNAND_MODE
     };
-    if(GetNandCtr(padInfo.ctr, partitions[3].offset) != 0)
+    if(SetupNandCrypto(padInfo.ctr, partitions[3].offset) != 0)
         return 1;
 
     return CreatePad(&padInfo);
@@ -481,7 +479,7 @@ u32 Firm0Firm1Padgen(u32 param)
 u32 DecryptNandToMem(u8* buffer, u32 offset, u32 size, PartitionInfo* partition)
 {
     CryptBufferInfo info = {.keyslot = partition->keyslot, .setKeyY = 0, .size = size, .buffer = buffer, .mode = partition->mode};
-    if(GetNandCtr(info.ctr, offset) != 0)
+    if(SetupNandCrypto(info.ctr, offset) != 0)
         return 1;
 
     u32 n_sectors = (size + NAND_SECTOR_SIZE - 1) / NAND_SECTOR_SIZE;
@@ -580,7 +578,7 @@ u32 DecryptNandPartition(u32 param)
 u32 EncryptMemToNand(u8* buffer, u32 offset, u32 size, PartitionInfo* partition)
 {
     CryptBufferInfo info = {.keyslot = partition->keyslot, .setKeyY = 0, .size = size, .buffer = buffer, .mode = partition->mode};
-    if(GetNandCtr(info.ctr, offset) != 0)
+    if(SetupNandCrypto(info.ctr, offset) != 0)
         return 1;
 
     u32 n_sectors = (size + NAND_SECTOR_SIZE - 1) / NAND_SECTOR_SIZE;

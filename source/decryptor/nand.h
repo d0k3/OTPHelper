@@ -40,7 +40,7 @@ typedef struct {
 } __attribute__((packed)) PartitionInfo;
 
 PartitionInfo* GetPartitionInfo(u32 partition_id);
-u32 GetNandCtr(u8* ctr, u32 offset);
+u32 SetupNandCrypto(u8* ctr, u32 offset);
 
 u32 ReadNandHeader(u8* out);
 u32 WriteNandHeader(u8* in);
