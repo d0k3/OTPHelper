@@ -21,7 +21,7 @@ static PartitionInfo partitions[] = {
     { "CTRNAND", {0xE9, 0x00, 0x00, 0x43, 0x54, 0x52, 0x20, 0x20}, 0x0B95AE00, 0x41D2D200, 0x4, AES_CNT_CTRNAND_MODE }  // NO3DS
 };
 
-static u8 whatisthis[16] = { 0x5D, 0xED, 0x13, 0xB3, 0xDF, 0xF8, 0x27, 0xD8, 0x1D, 0x0D, 0xF1, 0x19, 0x0D, 0x00, 0xEE, 0xAC };
+static u8 whatisthis[16] = { 0xF1, 0x44, 0x59, 0x62, 0xB3, 0x96, 0x88, 0xA8, 0x54, 0xBA, 0x82, 0x14, 0xB3, 0x6B, 0xD5, 0xF6 };
 
 static u32 emunand_header = 0;
 static u32 emunand_offset = 0;
@@ -386,8 +386,9 @@ u32 SetupNandCrypto(u8* ctr, u32 offset)
         // part #3: CTRNAND N3DS KEY
         while (GetUnitPlatform() == PLATFORM_N3DS) {
             u8 CtrNandKeyY[16];
-            CryptBufferInfo info = {.keyslot = 0x06, .setKeyY = 0, .size = 16, .buffer = CtrNandKeyY, .mode = AES_CNT_CTRNAND_MODE};
+            CryptBufferInfo info = {.keyslot = 0x2C, .setKeyY = 1, .size = 16, .buffer = CtrNandKeyY, .mode = AES_CNT_CTRNAND_MODE};
             memset(info.ctr, 0x00, 16);
+            memset(info.keyY, 0x00, 16);
             
             memcpy(CtrNandKeyY, whatisthis, 16);
             CryptBuffer(&info);
