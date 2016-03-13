@@ -687,7 +687,7 @@ u32 RestoreNand(u32 param)
         for (u32 i = 1; i < n_sectors; i += SECTORS_PER_READ) {
             u32 read_sectors = min(SECTORS_PER_READ, (n_sectors - i));
             ShowProgress(i, n_sectors);
-            sdmmc_sdcard_readsectors(l_emunand_offset, read_sectors, buffer);
+            sdmmc_sdcard_readsectors(l_emunand_offset + i, read_sectors, buffer);
             WriteNandSectors(i, read_sectors, buffer);
         }
     }
