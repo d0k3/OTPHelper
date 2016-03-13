@@ -640,7 +640,7 @@ u32 RestoreNand(u32 param)
         if (CheckNandIntegrity(filename, false) != 0)
             return 1;
         #else
-        if (CheckNandIntegrity(filename, true) != 0)
+        if (CheckNandIntegrity(filename, !(param & N_EMUNAND)) != 0)
             return 1;
         #endif
         
@@ -672,7 +672,7 @@ u32 RestoreNand(u32 param)
         if (CheckNandIntegrity(NULL, false) != 0)
             return 1;
         #else
-        if (CheckNandIntegrity(NULL, true) != 0)
+        if (CheckNandIntegrity(NULL, !(param & N_EMUNAND)) != 0)
             return 1;
         #endif
         ReadNandHeader(buffer);
