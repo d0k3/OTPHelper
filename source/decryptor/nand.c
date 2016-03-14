@@ -657,7 +657,10 @@ u32 RestoreNand(u32 param)
                 result = 1;
                 break;
             }
-            WriteNandSectors(i, read_sectors, buffer);
+            if (!WriteNandSectors(i, read_sectors, buffer)) {
+                result = 1;
+                break;
+            }
         }
 
         FileClose();
@@ -683,12 +686,15 @@ u32 RestoreNand(u32 param)
         Debug("Cloning EmuNAND to %sNAND. Size (MB): %u", (param & N_EMUNAND) ? "Emu" : "Sys", nand_size / (1024 * 1024));
         
         u32 n_sectors = nand_size / NAND_SECTOR_SIZE;
-        WriteNandSectors(0, 1, buffer); // write header separately
+        if (WriteNandSectors(0, 1, buffer) != 0) // write header separately
+            return 1;
         for (u32 i = 1; i < n_sectors; i += SECTORS_PER_READ) {
             u32 read_sectors = min(SECTORS_PER_READ, (n_sectors - i));
             ShowProgress(i, n_sectors);
-            sdmmc_sdcard_readsectors(l_emunand_offset + i, read_sectors, buffer);
-            WriteNandSectors(i, read_sectors, buffer);
+            if (sdmmc_sdcard_readsectors(l_emunand_offset + i, read_sectors, buffer) != 0)
+                return 1;
+            if (WriteNandSectors(i, read_sectors, buffer) != 0)
+                return 1;
         }
     }
     
