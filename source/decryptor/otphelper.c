@@ -65,6 +65,36 @@ u32 DumpOtp(u32 param)
     return 0;
 }
 
+u32 CheckOtp(u32 param)
+{
+    u8* buffer = BUFFER_ADDRESS;
+    u32 otpsize = (param & OTP_BIG) ? 0x108 : 0x100;
+    Debug("Validating otp.bin (%u byte)...", otpsize);
+    if (!DebugFileOpen((param & OTP_BIG) ? "otp0x108.bin" : "otp.bin"))
+        return 1;
+    if (!DebugFileRead(buffer, otpsize, 0)) {
+        FileClose();
+        return 1;
+    }
+    FileClose();
+    
+    // zero check
+    u32 zero_chk = 0;
+    for (; (zero_chk < otpsize) && (buffer[zero_chk] == 0x00); zero_chk++);
+    if (zero_chk >= otpsize) {
+        Debug("Your otp dump is all zeroes!");
+        return 1;
+    }
+    
+    // comparing with data from memory
+    if (memcmp((void*)0x10012000, buffer, otpsize) != 0) {
+        Debug("Data does not match with otp!");
+        return 1;
+    }
+    
+    return 0;
+}
+
 u32 ExpandOtp(u32 param)
 {
     u8* buffer = BUFFER_ADDRESS;

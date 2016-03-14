@@ -14,13 +14,15 @@ MenuInfo menu[] =
     {
         #ifdef EXEC_OLDSPIDER
         #ifndef BUILD_NAME
-        "OTPHelper FW 2.1 Main Menu", 3,
+        "OTPHelper FW 2.1 Main Menu", 6,
         #else
-        BUILD_NAME, 3,
+        BUILD_NAME, 6,
         #endif
         {
-            { "Dump otp.bin (0x100) (< 3.0)", DumpOtp,                0 },
-            { "Dump otp.bin (0x108) (< 3.0)", DumpOtp,                OTP_BIG },
+            { "Dump otp.bin (0x100)",         DumpOtp,                0 },
+            { "Dump otp.bin (0x108)",         DumpOtp,                OTP_BIG },
+            { "Validate otp.bin (0x100)",     CheckOtp,               0 },
+            { "Validate otp.bin (0x108)",     CheckOtp,               OTP_BIG },
             { "NAND Backup & Restore...",     NULL,                   SUBMENU_START + 0 },
             { "NAND XORpads...",              NULL,                   SUBMENU_START + 1 }
         }
