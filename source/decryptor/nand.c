@@ -657,7 +657,7 @@ u32 RestoreNand(u32 param)
                 result = 1;
                 break;
             }
-            if (!WriteNandSectors(i, read_sectors, buffer)) {
+            if (WriteNandSectors(i, read_sectors, buffer) != 0) {
                 result = 1;
                 break;
             }
