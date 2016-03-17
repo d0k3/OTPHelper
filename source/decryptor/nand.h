@@ -14,7 +14,9 @@
 
 #define PG_FORCESLOT4 (1<<0)
 
-// direct EmuNAND -> SysNAND clone, not for users!
+// use NAND dump instead of NAND - only available for few operations
+#define N_NANDFILE  (1<<26)
+// direct EmuNAND -> SysNAND clone
 #define N_DIRECT    (1<<27)
 // 'blind' NAND dump / restore -> unsure if we will use this
 #define N_BLIND     (1<<28)
@@ -50,6 +52,7 @@ u32 InputFileNameSelector(char* filename, const char* basename, char* extension,
 
 u32 DecryptNandToMem(u8* buffer, u32 offset, u32 size, PartitionInfo* partition);
 u32 DecryptNandToFile(const char* filename, u32 offset, u32 size, PartitionInfo* partition);
+u32 DecryptNandToHash(u8* hash, u32 offset, u32 size, PartitionInfo* partition);
 u32 EncryptMemToNand(u8* buffer, u32 offset, u32 size, PartitionInfo* partition);
 u32 EncryptFileToNand(const char* filename, u32 offset, u32 size, PartitionInfo* partition);
 

@@ -2,5 +2,6 @@
 /build
 /output
 /release
+/zzz_wip
 
 .DS_Store

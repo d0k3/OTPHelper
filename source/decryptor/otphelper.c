@@ -4,9 +4,18 @@
 #include "decryptor/aes.h"
 #include "decryptor/decryptor.h"
 #include "decryptor/nand.h"
+#include "decryptor/nandfat.h"
 #include "decryptor/otphelper.h"
 #include "NCSD_header_o3ds_hdr.h"
+#include "EUR_sha256.h"
+#include "USA_sha256.h"
+#include "JAP_sha256.h"
 
+typedef struct {
+    u64 titleId;
+    u8  reserved[8];
+    u8  sha256[32];
+} __attribute__((packed)) TitleHashInfo;
 
 static PartitionInfo partition_n3ds =
     { "CTRNFULL", {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}, 0x0B930000, 0x41ED0000, 0x5, AES_CNT_CTRNAND_MODE };
@@ -263,4 +272,128 @@ u32 UnbrickNand(u32 param)
         return 1;
     
     return 0;
+}
+
+u32 ValidateDowngrade(u32 param)
+{
+    const u32 max_num_apps = 8;
+    
+    PartitionInfo* ctrnand_info = GetPartitionInfo(P_CTRNAND);
+    
+    TitleHashInfo* checklist = NULL;
+    u32 n_titles = 0;
+    
+    u32 n_full_success = 0;
+    u32 n_tmd_success = 0;
+    u32 n_not_found = 0;
+    u32 n_not_matched = 0;
+    u32 n_app_not_found = 0;
+    u32 n_app_not_matched = 0;
+    
+    u32 offset;
+    u32 size;
+    
+    
+    // check if unbricked
+    if (CheckNandHeader(NULL) == NAND_HDR_N3DS) {
+        Debug("NAND is not downgraded or stil bricked");
+        return 1;
+    }
+    
+    // find out 3DS region
+    u8* secureInfo = BUFFER_ADDRESS;
+    if (SeekFileInNand(&offset, &size, "RW         SYS        SECURE~?   ", ctrnand_info) != 0) {
+        Debug("SecureInfo_A not found!");
+        return 1;
+    }
+    if (DecryptNandToMem(secureInfo, offset, size, ctrnand_info) != 0)
+        return 1;
+    if (secureInfo[0x100] == 0) {
+        Debug("Your region is: JAP");
+        checklist = (TitleHashInfo*) JAP_sha256;
+        n_titles = JAP_sha256_size / sizeof(TitleHashInfo);
+    } else if (secureInfo[0x100] == 1) {
+        Debug("Your region is: USA");
+        checklist = (TitleHashInfo*) USA_sha256;
+        n_titles = USA_sha256_size / sizeof(TitleHashInfo);
+    } else if (secureInfo[0x100] == 2) {
+        Debug("Your region is: EUR");
+        checklist = (TitleHashInfo*) EUR_sha256;
+        n_titles = EUR_sha256_size / sizeof(TitleHashInfo);
+    } else {
+        Debug("Unsupported region");
+        return 1;
+    }
+    
+    for (u32 t = 0; t < n_titles; t++) {
+        u8  l_sha256[32];
+        u32 offset_app[max_num_apps]; // 8 should be more than enough
+        u32 size_app[max_num_apps];
+        u32 title_state;
+        
+        Debug("Checking title %08X%08X...", (unsigned int) (checklist[t].titleId >> 32), (unsigned int) (checklist[t].titleId & 0xFFFFFFFF));
+        ShowProgress(t, n_titles);
+        
+        title_state = SeekTitleInNand(&offset, &size, offset_app, size_app, checklist[t].titleId, max_num_apps);
+        if ((title_state == S_TMD_NOT_FOUND) || (title_state == S_TMD_IS_CORRUPT)) {
+            Debug("TMD not found or corrupt");
+            n_not_found++;
+            continue;
+        }
+        DecryptNandToHash(l_sha256, offset, size, ctrnand_info);
+        if (memcmp(l_sha256, checklist[t].sha256, 32) != 0) {
+            Debug("TMD not matched");
+            n_not_matched++;
+            continue;
+        }
+        n_tmd_success++;
+        
+        // TMD verified succesfully, now verifying apps
+        if (title_state != S_APP_NOT_FOUND) {
+            u8* tmd_data = (u8*) 0x20316000;
+            if (DecryptNandToMem(tmd_data, offset, size, ctrnand_info) != 0)
+                return 1; 
+            tmd_data += (tmd_data[3] == 3) ? 0x240 : (tmd_data[3] == 4) ? 0x140 : 0x80;
+            u8* content_list = tmd_data + 0xC4 + (64 * 0x24);
+            u32 cnt_count = getbe16(tmd_data + 0x9E);
+            u32 n_verified = max_num_apps;
+            for (u32 i = 0; i < max_num_apps && i < cnt_count; i++) {
+                u8* app_sha256 = content_list + (0x30 * i) + 0x10;
+                DecryptNandToHash(l_sha256, offset_app[i], size_app[i], ctrnand_info);
+                if (memcmp(l_sha256, app_sha256, 32) != 0) {
+                    n_verified = i;
+                    break;
+                }
+            }
+            if ((n_verified < max_num_apps) && (n_verified < cnt_count)) {
+                n_app_not_matched++;
+                continue;
+            }
+        } else {
+            n_app_not_found++;
+            continue;
+        }
+        
+        // full success if arriving here
+        n_full_success++;
+    }
+    ShowProgress(0, 0);
+    
+    Debug("");
+    Debug("Validation stage 1: %s", (n_tmd_success + n_app_not_found == n_titles) ? "SUCCESS" : "FAILED");
+    Debug("Validation stage 2: %s", (n_full_success == n_titles) ? "SUCCESS" : "FAILED");
+    
+    if (n_full_success < n_titles) {
+        Debug("");
+        if (n_tmd_success < n_titles) {
+            Debug(" # TMD success     : %3u", n_tmd_success);
+            Debug(" # TMD not found   : %3u", n_not_found);
+            Debug(" # TMD not matched : %3u", n_not_matched);
+        }
+        Debug(" # APP success     : %3u", n_full_success);
+        Debug(" # APP not found / fragmented : %3u", n_app_not_found);
+        Debug(" # APP not matched : %3u", n_app_not_matched);
+    }
+    
+    return (n_full_success == n_titles) ? 0 : 1;
 }

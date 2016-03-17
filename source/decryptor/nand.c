@@ -151,6 +151,7 @@ u32 CheckNandIntegrity(const char* path, bool block_key0x05)
         ret = 1;
     } else if (block_key0x05 && (nand_hdr_type == NAND_HDR_N3DS)) {
         // Don't allow injecting N3DS type NAND images
+        // this is very OTPHelper specific!
         Debug("This is a slot0x5 (N3DS) type NAND image!");
         Debug("Sorry, you can't inject that, and if I");
         Debug("saved your 3DS, you owe me a beer.");
@@ -515,6 +516,23 @@ u32 DecryptNandToFile(const char* filename, u32 offset, u32 size, PartitionInfo*
     return result;
 }
 
+u32 DecryptNandToHash(u8* hash, u32 offset, u32 size, PartitionInfo* partition)
+{
+    u8* buffer = BUFFER_ADDRESS;
+
+    sha_init(SHA256_MODE);
+    for (u32 i = 0; i < size; i += NAND_SECTOR_SIZE * SECTORS_PER_READ) {
+        u32 read_bytes = min(BUFFER_MAX_SIZE, (size - i));
+        if (size >= 0x100000) ShowProgress(i, size);
+        DecryptNandToMem(buffer, offset + i, read_bytes, partition);
+        sha_update(buffer, read_bytes);
+    }
+    sha_get(hash);
+    ShowProgress(0, 0);
+
+    return 0;
+}
+
 u32 DumpNand(u32 param)
 {
     char filename[64];
@@ -756,7 +774,7 @@ u32 InjectNandPartition(u32 param)
 
 u32 ValidateNand(u32 param)
 {
-    if (param & N_EMUNAND) {
+    if (!(param & N_NANDFILE)) {
         if (CheckNandIntegrity(NULL, false) != 0)
             return 1;
     } else {

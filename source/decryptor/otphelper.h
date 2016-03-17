@@ -21,3 +21,4 @@ u32 SwitchCtrNandCrypto(u32 param);
 u32 DumpNandHeader(u32 param);
 u32 InjectNandHeader(u32 param);
 u32 UnbrickNand(u32 param);
+u32 ValidateDowngrade(u32 param);
