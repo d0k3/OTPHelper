@@ -1,5 +1,6 @@
 #include "fs.h"
 #include "draw.h"
+#include "hid.h"
 #include "platform.h"
 #include "decryptor/aes.h"
 #include "decryptor/decryptor.h"
@@ -40,6 +41,12 @@ static u8 nand_magic_o3ds[0x60] = {
     0x80, 0xC9, 0x05, 0x00, 0x80, 0xAE, 0x17, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
+
+static u8 firm21_sha256[0x20] = {
+    0x87, 0xEF, 0x62, 0x94, 0xB9, 0x95, 0x52, 0x0F, 0xE5, 0x4C, 0x75, 0xCB, 0x6B, 0x17, 0xE0, 0x4A,
+    0x6C, 0x3D, 0xE3, 0x26, 0xDB, 0x08, 0xFC, 0x93, 0x39, 0x45, 0xC0, 0x06, 0x51, 0x45, 0x5A, 0x89
+}
+static u32 firm21_size = 0x000DB000;
 
 u32 CheckNandHeader(u8* header) {
     u8 lheader[0x200];
@@ -279,6 +286,7 @@ u32 ValidateDowngrade(u32 param)
     const u32 max_num_apps = 8;
     
     PartitionInfo* ctrnand_info = GetPartitionInfo(P_CTRNAND);
+    PartitionInfo* firm0_info = GetPartitionInfo(P_FIRM0);
     
     TitleHashInfo* checklist = NULL;
     u32 n_titles = 0;
@@ -291,6 +299,7 @@ u32 ValidateDowngrade(u32 param)
     u32 n_app_not_found = 0;
     u32 n_app_not_matched = 0;
     
+    u8  l_sha256[32];
     u32 offset;
     u32 size;
     
@@ -298,6 +307,13 @@ u32 ValidateDowngrade(u32 param)
     // check if unbricked
     if (CheckNandHeader(NULL) == NAND_HDR_N3DS) {
         Debug("NAND is not downgraded or stil bricked");
+        return 1;
+    }
+    
+    // validate FIRM for 2.1
+    DecryptNandToHash(l_sha256, firm0_info->offset, firm21_size, firm0_info);
+    if (memcmp(l_sha256, firm21_sha256, 32) != 0) {
+        Debug("FIRM0 hash mismatch!");
         return 1;
     }
     
@@ -327,7 +343,6 @@ u32 ValidateDowngrade(u32 param)
     }
     
     for (u32 t = 0; t < n_titles; t++) {
-        u8  l_sha256[32];
         u32 offset_app[max_num_apps]; // 8 should be more than enough
         u32 size_app[max_num_apps];
         u32 title_state;
@@ -423,5 +438,5 @@ u32 ValidateDowngrade(u32 param)
         Debug("");
     }
     
-    return (valstage2) ? 0 : 1;
+    return (valstage2) ? 0 : (valstage1) ? 2 : 1;
 }
