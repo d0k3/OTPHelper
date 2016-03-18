@@ -14,7 +14,7 @@ MenuInfo menu[] =
     {
         #ifdef EXEC_OLDSPIDER
         #ifndef BUILD_NAME
-        "OTPHelper FW 2.1 Main Menu", 7,
+        "OTPHelper FW 2.1 Main Menu", 8,
         #else
         BUILD_NAME, 8,
         #endif
@@ -30,11 +30,12 @@ MenuInfo menu[] =
         }
         #else
         #ifndef BUILD_NAME
-        "OTPHelper N3DS Main Menu", 5,
+        "OTPHelper N3DS Main Menu", 7,
         #else
-        BUILD_NAME, 6,
+        BUILD_NAME, 7,
         #endif
         {
+            { "One Click Setup (!!!)",        OneClickSetup,          N_NANDWRITE },
             { "Unbrick FW 2.1 EmuNAND",       UnbrickNand,            HDR_FROM_MEM | N_EMUNAND | N_NANDWRITE },
             { "otp.bin -> otp0x108.bin",      ExpandOtp,              0 },
             { "NAND Validation Options...",   NULL,                   SUBMENU_START + 0 },

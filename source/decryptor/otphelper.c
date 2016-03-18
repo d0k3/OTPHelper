@@ -45,7 +45,7 @@ static u8 nand_magic_o3ds[0x60] = {
 static u8 firm21_sha256[0x20] = {
     0x87, 0xEF, 0x62, 0x94, 0xB9, 0x95, 0x52, 0x0F, 0xE5, 0x4C, 0x75, 0xCB, 0x6B, 0x17, 0xE0, 0x4A,
     0x6C, 0x3D, 0xE3, 0x26, 0xDB, 0x08, 0xFC, 0x93, 0x39, 0x45, 0xC0, 0x06, 0x51, 0x45, 0x5A, 0x89
-}
+};
 static u32 firm21_size = 0x000DB000;
 
 u32 CheckNandHeader(u8* header) {
@@ -446,4 +446,60 @@ u32 ValidateDowngrade(u32 param)
     }
     
     return (valstage2) ? 0 : (valstage1) ? 2 : 1;
+}
+
+u32 OneClickSetup(u32 param)
+{
+    if (!(param & N_NANDWRITE) || (param & N_EMUNAND)) // developer screwup protection
+        return 1;
+        
+    if (SetNand(true, false) != 0) // set NAND to emuNAND
+        return 1;
+        
+    // unbrick EmuNAND only if required
+    if ((GetUnitPlatform() == PLATFORM_N3DS) && (CheckNandHeader(NULL) == NAND_HDR_N3DS)) {
+        if (UnbrickNand(param | N_EMUNAND | HDR_FROM_MEM) != 0) // unbrick emuNAND
+            return 1;
+    }
+    
+    // check Downgrade integrity
+    u32 dg_state = ValidateDowngrade(param | N_EMUNAND);
+    if (dg_state == 2) {
+        Debug("Downgrade Validation failed at Stage 2");
+        Debug("It is recommended you defragment your CTRNAND");
+        Debug("and run this again.");
+        Debug("");
+        Debug("Press <A> to continue anyways, <B> to stop");
+        while (true) {
+            u32 pad_state = InputWait();
+            if (pad_state & BUTTON_A) {
+                break;
+            } else if (pad_state & BUTTON_B) {
+                Debug("Cancelled by user");
+                return 1;
+            }
+        }
+    } else if (dg_state != 0) {
+        Debug("Downgrade Validation failed!");
+        Debug("You can not continue here");
+        return 1;
+    }
+    
+    if (SetNand(false, false) != 0) // set NAND back to sysNAND
+        return 1;
+    if (RestoreNand(param | N_DIRECT) != 0) {
+        Debug("NAND clone to SysNAND failed!");
+        Debug("You can not continue here and you");
+        Debug("may need to restore your SysNAND");
+        return 1;
+    }
+    
+    if (ValidateDowngrade(param) == 1) { // might be redundant
+        Debug("SysNAND downgrade check failed!");
+        Debug("You need to restore your SysNAND from");
+        Debug("a valid backup.");
+        return 1;
+    }
+    
+    return 0;
 }
