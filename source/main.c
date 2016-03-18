@@ -16,31 +16,43 @@ MenuInfo menu[] =
         #ifndef BUILD_NAME
         "OTPHelper FW 2.1 Main Menu", 7,
         #else
-        BUILD_NAME, 7,
+        BUILD_NAME, 8,
         #endif
         {
             { "Dump otp.bin (0x100)",         DumpOtp,                0 },
             { "Dump otp.bin (0x108)",         DumpOtp,                OTP_BIG },
             { "Validate otp.bin (0x100)",     CheckOtp,               0 },
             { "Validate otp.bin (0x108)",     CheckOtp,               OTP_BIG },
-            { "NAND Backup & Restore...",     NULL,                   SUBMENU_START + 0 },
-            { "NAND XORpads...",              NULL,                   SUBMENU_START + 1 },
-            { "NAND Validation Options...",   NULL,                   SUBMENU_START + 2 }
+            { "NAND Validation Options...",   NULL,                   SUBMENU_START + 0 },
+            { "NAND Backup & Restore...",     NULL,                   SUBMENU_START + 1 },
+            { "CTRNAND Dump & Inject...",     NULL,                   SUBMENU_START + 2 },
+            { "NAND XORpads...",              NULL,                   SUBMENU_START + 3 }
         }
         #else
         #ifndef BUILD_NAME
         "OTPHelper N3DS Main Menu", 5,
         #else
-        BUILD_NAME, 5,
+        BUILD_NAME, 6,
         #endif
         {
             { "Unbrick FW 2.1 EmuNAND",       UnbrickNand,            HDR_FROM_MEM | N_EMUNAND | N_NANDWRITE },
             { "otp.bin -> otp0x108.bin",      ExpandOtp,              0 },
-            { "NAND Backup & Restore...",     NULL,                   SUBMENU_START + 0 },
-            { "NAND XORpads...",              NULL,                   SUBMENU_START + 1 },
-            { "NAND Validation Options...",   NULL,                   SUBMENU_START + 2 }
+            { "NAND Validation Options...",   NULL,                   SUBMENU_START + 0 },
+            { "NAND Backup & Restore...",     NULL,                   SUBMENU_START + 1 },
+            { "CTRNAND Dump & Inject...",     NULL,                   SUBMENU_START + 2 },
+            { "NAND XORpads...",              NULL,                   SUBMENU_START + 3 }
         }
         #endif
+    },
+    {
+        "NAND Validation", 5,
+        {
+            { "Validate NAND Backup",         &ValidateNand,          N_NANDFILE },
+            { "Validate SysNAND",             &ValidateNand,          0 },
+            { "Validate EmuNAND",             &ValidateNand,          N_EMUNAND },
+            { "Validate SysNAND Downgrade",   &ValidateDowngrade,     0 },
+            { "Validate EmuNAND Downgrade",   &ValidateDowngrade,     N_EMUNAND }
+        }
     },
     {
         "NAND Backup & Restore", 5,
@@ -53,22 +65,21 @@ MenuInfo menu[] =
         }
     },
     {
+        "CTRNAND Dump & Inject", 4,
+        {            
+            { "SysNAND CTRNAND Dump",         &DecryptNandPartition,  P_CTRNAND },
+            { "SysNAND CTRNAND Inject",       &InjectNandPartition,   N_NANDWRITE | P_CTRNAND },
+            { "EmuNAND CTRNAND Dump",         &DecryptNandPartition,  N_EMUNAND | P_CTRNAND },
+            { "EmuNAND CTRNAND Inject",       &InjectNandPartition,   N_NANDWRITE | N_EMUNAND | P_CTRNAND }
+        }
+    },
+    {
         "NAND XORpads", 4,
         {
             { "CTRNAND Padgen",               &CtrNandPadgen,         0 },
             { "CTRNAND Padgen (slot 0x4)",    &CtrNandPadgen,         PG_FORCESLOT4 },
             { "TWLNAND Padgen",               &TwlNandPadgen,         0 },
             { "FIRM0FIRM1 Padgen",            &Firm0Firm1Padgen,      0 }
-        }
-    },
-    {
-        "NAND Validation", 5,
-        {
-            { "Validate NAND Backup",         &ValidateNand,          N_NANDFILE },
-            { "Validate SysNAND",             &ValidateNand,          0 },
-            { "Validate EmuNAND",             &ValidateNand,          N_EMUNAND },
-            { "Validate SysNAND Downgrade",   &ValidateDowngrade,     0 },
-            { "Validate EmuNAND Downgrade",   &ValidateDowngrade,     N_EMUNAND }
         }
     },
     {
