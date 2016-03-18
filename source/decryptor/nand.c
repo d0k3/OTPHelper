@@ -21,10 +21,13 @@ static PartitionInfo partitions[] = {
     { "CTRNAND", {0xE9, 0x00, 0x00, 0x43, 0x54, 0x52, 0x20, 0x20}, 0x0B95AE00, 0x41D2D200, 0x4, AES_CNT_CTRNAND_MODE }  // NO3DS
 };
 
-static u8 whatisthis[16] = { 0xF1, 0x44, 0x59, 0x62, 0xB3, 0x96, 0x88, 0xA8, 0x54, 0xBA, 0x82, 0x14, 0xB3, 0x6B, 0xD5, 0xF6 };
+static const u8 whatisthis[16] =
+    { 0xF1, 0x44, 0x59, 0x62, 0xB3, 0x96, 0x88, 0xA8, 0x54, 0xBA, 0x82, 0x14, 0xB3, 0x6B, 0xD5, 0xF6 };
 
 static u32 emunand_header = 0;
 static u32 emunand_offset = 0;
+
+static bool block_key0x05_override = false;
 
 
 u32 CheckEmuNand(void)
@@ -149,9 +152,10 @@ u32 CheckNandIntegrity(const char* path, bool block_key0x05)
     if ((ret == 0) && (nand_hdr_type == NAND_HDR_UNK)) {
         Debug("NAND header not recognized!");
         ret = 1;
-    } else if (block_key0x05 && (nand_hdr_type == NAND_HDR_N3DS)) {
+    } else if (block_key0x05 && !block_key0x05_override && (nand_hdr_type == NAND_HDR_N3DS)) {
         // Don't allow injecting N3DS type NAND images
         // this is very OTPHelper specific!
+        // remove this when reusing the code
         Debug("This is a slot0x5 (N3DS) type NAND image!");
         Debug("Sorry, you can't inject that, and if I");
         Debug("saved your 3DS, you owe me a beer.");
@@ -183,6 +187,8 @@ u32 CheckNandIntegrity(const char* path, bool block_key0x05)
     }
     
     if (path) FileClose();
+    if ((ret != 0) && (!path) && (!emunand_header)) // if a SysNAND check failed, unblock key0x05 restores
+        block_key0x05_override = true;
     
     return ret;
 }
