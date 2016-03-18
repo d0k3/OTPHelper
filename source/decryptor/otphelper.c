@@ -400,7 +400,7 @@ u32 ValidateDowngrade(u32 param)
                 continue;
             }
         } else {
-            Debug("APP not found");
+            Debug("APP not found or fragmented");
             n_app_not_found++;
             continue;
         }
@@ -410,7 +410,7 @@ u32 ValidateDowngrade(u32 param)
     }
     ShowProgress(0, 0);
     
-    bool valstage1 = (n_tmd_success + n_app_not_found == n_titles - n_skipped);
+    bool valstage1 = (n_tmd_success == n_titles - n_skipped);
     bool valstage2 = (n_full_success == n_titles - n_skipped);
     
     Debug("");
