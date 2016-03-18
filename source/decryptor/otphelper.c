@@ -308,8 +308,8 @@ u32 ValidateDowngrade(u32 param)
     
     
     // check if unbricked
-    if (CheckNandHeader(NULL) == NAND_HDR_N3DS) {
-        Debug("NAND is not downgraded or stil bricked");
+    if (!(param & DG_FORCECHECK) && (CheckNandHeader(NULL) == NAND_HDR_N3DS)) {
+        Debug("NAND is not downgraded or still bricked");
         return 1;
     }
     
@@ -480,9 +480,16 @@ u32 OneClickSetup(u32 param)
         
     // unbrick EmuNAND only if required
     if ((GetUnitPlatform() == PLATFORM_N3DS) && (CheckNandHeader(NULL) == NAND_HDR_N3DS)) {
+        Debug("EmuNAND is not yet unbricked, unbricking it now");
+        if (ValidateDowngrade(param | N_EMUNAND | DG_FORCECHECK) == 1) {
+            Debug("Did you forget about downgrading first?");
+            return 1;
+        }
         if (UnbrickNand(param | N_EMUNAND | HDR_FROM_MEM) != 0) // unbrick emuNAND
             return 1;
     }
+    
+    Debug("");
     
     // check Downgrade integrity
     u32 dg_state = ValidateDowngrade(param | N_EMUNAND);
@@ -507,6 +514,8 @@ u32 OneClickSetup(u32 param)
         return 1;
     }
     
+    Debug("");
+    
     if (SetNand(false, false) != 0) // set NAND back to sysNAND
         return 1;
     if (RestoreNand(param | N_DIRECT) != 0) {
@@ -515,6 +524,8 @@ u32 OneClickSetup(u32 param)
         Debug("may need to restore your SysNAND");
         return 1;
     }
+    
+    Debug("");
     
     if (ValidateDowngrade(param) == 1) { // might be redundant
         Debug("SysNAND downgrade check failed!");

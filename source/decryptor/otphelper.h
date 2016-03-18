@@ -5,6 +5,7 @@
 #define OTP_BIG         (1<<0)
 #define HDR_FROM_MEM    (1<<1)
 #define OTP_TO_N3DS     (1<<2)
+#define DG_FORCECHECK   (1<<3)
 
 // return values for NAND header check
 #define NAND_HDR_UNK    0
