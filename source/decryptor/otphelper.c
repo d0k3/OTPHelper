@@ -310,6 +310,13 @@ u32 ValidateDowngrade(u32 param)
         return 1;
     }
     
+    // perform basic NAND validation
+    if (CheckNandIntegrity(NULL, false) != 0) {
+        Debug("Basic NAND integrity check failed!");
+        Debug("You can not continue here");
+        return 1;
+    }
+    
     // validate FIRM for 2.1
     DecryptNandToHash(l_sha256, firm0_info->offset, firm21_size, firm0_info);
     if (memcmp(l_sha256, firm21_sha256, 32) != 0) {

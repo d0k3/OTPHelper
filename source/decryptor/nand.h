@@ -47,6 +47,8 @@ u32 SetupNandCrypto(u8* ctr, u32 offset);
 u32 ReadNandHeader(u8* out);
 u32 WriteNandHeader(u8* in);
 
+u32 CheckNandIntegrity(const char* path, bool block_key0x05);
+
 u32 OutputFileNameSelector(char* filename, const char* basename, char* extension);
 u32 InputFileNameSelector(char* filename, const char* basename, char* extension, u8* magic, u32 msize, u32 fsize);
 
