@@ -390,6 +390,33 @@ u32 SetupNandCrypto(u8* ctr, u32 offset)
         
         Debug("NAND CID: %08X%08X%08X%08X", getbe32(NandCid), getbe32(NandCid+4), getbe32(NandCid+8), getbe32(NandCid+12));
         
+        #ifndef EXEC_OLDSPIDER
+        // part #2: TWL KEY
+        // see: https://www.3dbrew.org/wiki/Memory_layout#ARM9_ITCM
+        u32* TwlCustId = (u32*) (0x01FFB808);
+        u8 TwlKeyX[16];
+        u8 TwlKeyY[16];
+        
+        // thanks b1l1s & Normmatt
+        Debug("TWL Customer ID: %08X%08X", TwlCustId[0], TwlCustId[1]);
+        
+        // see source from https://gbatemp.net/threads/release-twltool-dsi-downgrading-save-injection-etc-multitool.393488/
+        const char* nintendo = "NINTENDO";
+        u32* TwlKeyXW = (u32*) TwlKeyX;
+        TwlKeyXW[0] = (TwlCustId[0] ^ 0xB358A6AF) | 0x80000000;
+        TwlKeyXW[3] = TwlCustId[1] ^ 0x08C267B7;
+        memcpy(TwlKeyX + 4, nintendo, 8);
+        
+        // see: https://www.3dbrew.org/wiki/Memory_layout#ARM9_ITCM
+        u32 TwlKeyYW3 = 0xE1A00005;
+        memcpy(TwlKeyY, (u8*) 0x01FFD3C8, 12);
+        memcpy(TwlKeyY + 12, &TwlKeyYW3, 4);
+        
+        setup_aeskeyX(0x03, TwlKeyX);
+        setup_aeskeyY(0x03, TwlKeyY);
+        use_aeskey(0x03);
+        #endif
+        
         // part #3: CTRNAND N3DS KEY
         while (GetUnitPlatform() == PLATFORM_N3DS) {
             u8 CtrNandKeyY[16];
