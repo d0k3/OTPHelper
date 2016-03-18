@@ -285,6 +285,7 @@ u32 ValidateDowngrade(u32 param)
     
     u32 n_full_success = 0;
     u32 n_tmd_success = 0;
+    u32 n_skipped = 0;
     u32 n_not_found = 0;
     u32 n_not_matched = 0;
     u32 n_app_not_found = 0;
@@ -334,6 +335,12 @@ u32 ValidateDowngrade(u32 param)
         Debug("Checking title %08X%08X...", (unsigned int) (checklist[t].titleId >> 32), (unsigned int) (checklist[t].titleId & 0xFFFFFFFF));
         ShowProgress(t, n_titles);
         
+        if (((checklist[t].titleId >> 44) & 0xFF) == 0x48) {
+            Debug("Is a TWL title, skipped");
+            n_skipped++;
+            continue;
+        }   
+        
         title_state = SeekTitleInNand(&offset, &size, offset_app, size_app, checklist[t].titleId, max_num_apps);
         if ((title_state == S_TMD_NOT_FOUND) || (title_state == S_TMD_IS_CORRUPT)) {
             Debug("TMD not found or corrupt");
@@ -342,7 +349,7 @@ u32 ValidateDowngrade(u32 param)
         }
         DecryptNandToHash(l_sha256, offset, size, ctrnand_info);
         if (memcmp(l_sha256, checklist[t].sha256, 32) != 0) {
-            Debug("TMD not matched");
+            Debug("TMD hash mismatch");
             n_not_matched++;
             continue;
         }
@@ -366,10 +373,12 @@ u32 ValidateDowngrade(u32 param)
                 }
             }
             if ((n_verified < max_num_apps) && (n_verified < cnt_count)) {
+                Debug("APP hash mismatch");
                 n_app_not_matched++;
                 continue;
             }
         } else {
+            Debug("APP not found");
             n_app_not_found++;
             continue;
         }
@@ -379,21 +388,40 @@ u32 ValidateDowngrade(u32 param)
     }
     ShowProgress(0, 0);
     
+    bool valstage1 = (n_tmd_success + n_app_not_found == n_titles - n_skipped);
+    bool valstage2 = (n_full_success == n_titles - n_skipped);
+    
     Debug("");
-    Debug("Validation stage 1: %s", (n_tmd_success + n_app_not_found == n_titles) ? "SUCCESS" : "FAILED");
-    Debug("Validation stage 2: %s", (n_full_success == n_titles) ? "SUCCESS" : "FAILED");
+    Debug("Validation Stage 1: %s", (valstage1) ? "SUCCESS" : "FAILED");
+    Debug("Validation Stage 2: %s", (valstage2) ? "SUCCESS" : "FAILED");
     
     if (n_full_success < n_titles) {
-        Debug("");
+        if (n_skipped)
+            Debug(" # TWL titles        : %3u", n_skipped);
         if (n_tmd_success < n_titles) {
-            Debug(" # TMD success     : %3u", n_tmd_success);
-            Debug(" # TMD not found   : %3u", n_not_found);
-            Debug(" # TMD not matched : %3u", n_not_matched);
+            Debug(" # TMD success       : %3u", n_tmd_success);
+            Debug(" # TMD not found     : %3u", n_not_found);
+            Debug(" # TMD hash mismatch : %3u", n_not_matched);
         }
-        Debug(" # APP success     : %3u", n_full_success);
-        Debug(" # APP not found / fragmented : %3u", n_app_not_found);
-        Debug(" # APP not matched : %3u", n_app_not_matched);
+        Debug(" # APP success       : %3u", n_full_success);
+        Debug(" # APP fragmented    : %3u", n_app_not_found); // or not found, but fragmentation is much more likely
+        Debug(" # APP hash mismatch : %3u", n_app_not_matched);
     }
     
-    return (n_full_success == n_titles) ? 0 : 1;
+    Debug("");
+    
+    if (!valstage1) {
+        Debug("WARNING: Validation Stage 1 failed!");
+        Debug("!DO NOT %s!", (param & N_EMUNAND) ? "RESTORE THIS TO SYSNAND" : "REBOOT YOUR 3DS NOW");
+        Debug("Starting from scratch is recommended");
+        Debug("");
+    } else if (!valstage2) {
+        Debug("WARNING: Validation Stage 2 failed!");
+        Debug("Everything might be fine, but we can't verify");
+        Debug("It is recommended you defragment your CTRNAND");
+        Debug("and run the Downgrade Validator again");
+        Debug("");
+    }
+    
+    return (valstage2) ? 0 : 1;
 }

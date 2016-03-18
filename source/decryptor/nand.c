@@ -523,12 +523,12 @@ u32 DecryptNandToHash(u8* hash, u32 offset, u32 size, PartitionInfo* partition)
     sha_init(SHA256_MODE);
     for (u32 i = 0; i < size; i += NAND_SECTOR_SIZE * SECTORS_PER_READ) {
         u32 read_bytes = min(BUFFER_MAX_SIZE, (size - i));
-        if (size >= 0x100000) ShowProgress(i, size);
+        // if (size >= 0x100000) ShowProgress(i, size);
         DecryptNandToMem(buffer, offset + i, read_bytes, partition);
         sha_update(buffer, read_bytes);
     }
     sha_get(hash);
-    ShowProgress(0, 0);
+    // ShowProgress(0, 0);
 
     return 0;
 }
