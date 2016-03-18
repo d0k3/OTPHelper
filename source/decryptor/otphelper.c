@@ -283,6 +283,8 @@ u32 UnbrickNand(u32 param)
 
 u32 ValidateDowngrade(u32 param)
 {
+    // see: https://www.3dbrew.org/wiki/Flash_Filesystem
+    const u32 ctrnand_o3ds_border = 0x0B95CA00 + 0x2F3E3600; 
     const u32 max_num_apps = 8;
     
     PartitionInfo* ctrnand_info = GetPartitionInfo(P_CTRNAND);
@@ -298,6 +300,7 @@ u32 ValidateDowngrade(u32 param)
     u32 n_not_matched = 0;
     u32 n_app_not_found = 0;
     u32 n_app_not_matched = 0;
+    u32 n_beyound_border = 0;
     
     u8  l_sha256[32];
     u32 offset;
@@ -376,6 +379,11 @@ u32 ValidateDowngrade(u32 param)
             continue;
         }
         n_tmd_success++;
+        if (offset + size > ctrnand_o3ds_border) {
+            Debug("TMD is in unmapped area");
+            n_beyound_border++;
+            continue;
+        }
         
         // TMD verified succesfully, now verifying apps
         if (title_state != S_APP_NOT_FOUND) {
@@ -385,16 +393,28 @@ u32 ValidateDowngrade(u32 param)
             tmd_data += (tmd_data[3] == 3) ? 0x240 : (tmd_data[3] == 4) ? 0x140 : 0x80;
             u8* content_list = tmd_data + 0xC4 + (64 * 0x24);
             u32 cnt_count = getbe16(tmd_data + 0x9E);
-            u32 n_verified = max_num_apps;
+            u32 n_ok = max_num_apps;
+            for (u32 i = 0; i < max_num_apps && i < cnt_count; i++) {
+                if (offset_app[i] + size_app[i] > ctrnand_o3ds_border) {
+                    n_ok = i;
+                    break;
+                }
+            }
+            if ((n_ok < max_num_apps) && (n_ok < cnt_count)) {
+                Debug("APP is in unmapped area");
+                n_beyound_border++;
+                continue;
+            }
+            n_ok = max_num_apps;
             for (u32 i = 0; i < max_num_apps && i < cnt_count; i++) {
                 u8* app_sha256 = content_list + (0x30 * i) + 0x10;
                 DecryptNandToHash(l_sha256, offset_app[i], size_app[i], ctrnand_info);
                 if (memcmp(l_sha256, app_sha256, 32) != 0) {
-                    n_verified = i;
+                    n_ok = i;
                     break;
                 }
             }
-            if ((n_verified < max_num_apps) && (n_verified < cnt_count)) {
+            if ((n_ok < max_num_apps) && (n_ok < cnt_count)) {
                 Debug("APP hash mismatch");
                 n_app_not_matched++;
                 continue;
@@ -410,7 +430,7 @@ u32 ValidateDowngrade(u32 param)
     }
     ShowProgress(0, 0);
     
-    bool valstage1 = (n_tmd_success == n_titles - n_skipped);
+    bool valstage1 = (n_tmd_success - n_app_not_matched - n_beyound_border == n_titles - n_skipped);
     bool valstage2 = (n_full_success == n_titles - n_skipped);
     
     Debug("");
@@ -420,6 +440,8 @@ u32 ValidateDowngrade(u32 param)
     if (n_full_success < n_titles) {
         if (n_skipped)
             Debug(" # TWL titles        : %3u", n_skipped);
+        if (n_beyound_border)
+            Debug(" # In unmapped area  : %3u", n_beyound_border);
         if (n_tmd_success < n_titles) {
             Debug(" # TMD success       : %3u", n_tmd_success);
             Debug(" # TMD not found     : %3u", n_not_found);
