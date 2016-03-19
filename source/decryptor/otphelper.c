@@ -335,6 +335,26 @@ u32 ValidateDowngrade(u32 param)
     }
     if (DecryptNandToMem(secureInfo, offset, size, ctrnand_info) != 0)
         return 1;
+    // check SecureInfo_a for corruption
+    if ((secureInfo[0x101] == '\0') && (secureInfo[0x110] == '\0')) {
+        char* sn = (char*) secureInfo + 0x102;
+        Debug("Your serial number is: %s", sn);
+        // check serial number
+        u32 sn_chk = 0;
+        for (; (sn_chk < 0xF) && (sn[sn_chk] >= 'A') && (sn[sn_chk] <= 'Z'); sn_chk++);
+        if ((sn_chk < 2) || (sn_chk > 4)) { // less than 2, more than 4 uppercase letters
+            Debug("Bad serial number!");
+            return 1;
+        }
+        for (; (sn_chk < 0xF) && (sn[sn_chk] >= '0') && (sn[sn_chk] <= '9'); sn_chk++);
+        if ((sn_chk >= 0xF) || (sn[sn_chk] != '\0')) { // numerical part fail?
+            Debug("Bad serial number!");
+            return 1;
+        }
+    } else {
+        Debug("SecureInfo_A may be corrupted!");
+        return 1;
+    }
     if (secureInfo[0x100] == 0) {
         Debug("Your region is: JAP");
         checklist = (TitleHashInfo*) JAP_sha256;
@@ -480,11 +500,11 @@ u32 OneClickSetup(u32 param)
         
     // unbrick EmuNAND only if required
     if ((GetUnitPlatform() == PLATFORM_N3DS) && (CheckNandHeader(NULL) == NAND_HDR_N3DS)) {
-        Debug("EmuNAND is not yet unbricked, unbricking it now");
         if (ValidateDowngrade(param | N_EMUNAND | DG_FORCECHECK) == 1) {
             Debug("Did you forget about downgrading first?");
             return 1;
         }
+        Debug("EmuNAND is not yet unbricked, unbricking it now");
         if (UnbrickNand(param | N_EMUNAND | HDR_FROM_MEM) != 0) // unbrick emuNAND
             return 1;
     }
@@ -518,6 +538,7 @@ u32 OneClickSetup(u32 param)
     
     if (SetNand(false, false) != 0) // set NAND back to sysNAND
         return 1;
+        
     if (RestoreNand(param | N_DIRECT) != 0) {
         Debug("NAND clone to SysNAND failed!");
         Debug("You can not continue here and you");
