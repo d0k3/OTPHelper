@@ -476,8 +476,13 @@ u32 ValidateDowngrade(u32 param)
     
     if (!valstage1) {
         Debug("WARNING: Validation Stage 1 failed!");
-        Debug("!DO NOT %s!", (param & N_EMUNAND) ? "RESTORE THIS TO SYSNAND" : "REBOOT YOUR 3DS NOW");
-        Debug("Starting from scratch is recommended");
+        if (param & N_EMUNAND) {
+            Debug("!DO NOT RESTORE THIS TO SYSNAND!");
+            Debug("Starting from scratch is recommended");
+        } else {
+            Debug("!DO NOT REBOOT YOUR 3DS NOW!");
+            Debug("You need to fix your SysNAND first");
+        }
         Debug("");
     } else if (!valstage2) {
         Debug("WARNING: Validation Stage 2 failed!");
