@@ -35,7 +35,7 @@ MenuInfo menu[] =
         BUILD_NAME, 7,
         #endif
         {
-            { "One Click Setup (untested)",   OneClickSetup,          N_NANDWRITE },
+            { "One Click Setup",              OneClickSetup,          N_NANDWRITE },
             { "Unbrick FW 2.1 EmuNAND",       UnbrickNand,            HDR_FROM_MEM | N_EMUNAND | N_NANDWRITE },
             { "otp.bin -> otp0x108.bin",      ExpandOtp,              0 },
             { "NAND Validation Options...",   NULL,                   SUBMENU_START + 0 },
