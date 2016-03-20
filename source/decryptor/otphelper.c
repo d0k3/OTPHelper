@@ -291,6 +291,7 @@ u32 ValidateDowngrade(u32 param)
     PartitionInfo* firm0_info = GetPartitionInfo(P_FIRM0);
     
     TitleHashInfo* checklist = NULL;
+    bool valstage0 = true;
     u32 n_titles = 0;
     
     u32 n_full_success = 0;
@@ -316,25 +317,24 @@ u32 ValidateDowngrade(u32 param)
     // perform basic NAND validation
     if (CheckNandIntegrity(NULL, false) != 0) {
         Debug("Basic NAND integrity check failed!");
-        Debug("You can not continue here");
-        return 1;
+        valstage0 = false;
     }
     
     // validate FIRM for 2.1
     DecryptNandToHash(l_sha256, firm0_info->offset, firm21_size, firm0_info);
     if (memcmp(l_sha256, firm21_sha256, 32) != 0) {
         Debug("FIRM0 hash mismatch!");
-        return 1;
+        valstage0 = false;
     }
     
     // find out 3DS region
     u8* secureInfo = BUFFER_ADDRESS;
     if (SeekFileInNand(&offset, &size, "RW         SYS        SECURE~?   ", ctrnand_info) != 0) {
         Debug("SecureInfo_A not found!");
-        return 1;
+        valstage0 = false;
     }
     if (DecryptNandToMem(secureInfo, offset, size, ctrnand_info) != 0)
-        return 1;
+        valstage0 = false;
     // check SecureInfo_a for corruption
     if ((secureInfo[0x101] == '\0') && (secureInfo[0x110] == '\0')) {
         char* sn = (char*) secureInfo + 0x102;
@@ -344,16 +344,16 @@ u32 ValidateDowngrade(u32 param)
         for (; (sn_chk < 0xF) && (sn[sn_chk] >= 'A') && (sn[sn_chk] <= 'Z'); sn_chk++);
         if ((sn_chk < 2) || (sn_chk > 4)) { // less than 2, more than 4 uppercase letters
             Debug("Bad serial number!");
-            return 1;
+            valstage0 = false;
         }
         for (; (sn_chk < 0xF) && (sn[sn_chk] >= '0') && (sn[sn_chk] <= '9'); sn_chk++);
         if ((sn_chk >= 0xF) || (sn[sn_chk] != '\0')) { // numerical part fail?
             Debug("Bad serial number!");
-            return 1;
+            valstage0 = false;
         }
     } else {
         Debug("SecureInfo_A may be corrupted!");
-        return 1;
+        valstage0 = false;
     }
     if (secureInfo[0x100] == 0) {
         Debug("Your region is: JAP");
@@ -372,7 +372,7 @@ u32 ValidateDowngrade(u32 param)
         return 1;
     }
     
-    for (u32 t = 0; t < n_titles; t++) {
+    for (u32 t = 0; (t < n_titles) && valstage0; t++) {
         u32 offset_app[max_num_apps]; // 8 should be more than enough
         u32 size_app[max_num_apps];
         u32 title_state;
@@ -454,6 +454,7 @@ u32 ValidateDowngrade(u32 param)
     bool valstage2 = (n_full_success == n_titles - n_skipped);
     
     Debug("");
+    Debug("Validation Stage 0: %s", (valstage0) ? "SUCCESS" : "FAILED");
     Debug("Validation Stage 1: %s", (valstage1) ? "SUCCESS" : "FAILED");
     Debug("Validation Stage 2: %s", (valstage2) ? "SUCCESS" : "FAILED");
     
@@ -474,8 +475,8 @@ u32 ValidateDowngrade(u32 param)
     
     Debug("");
     
-    if (!valstage1) {
-        Debug("WARNING: Validation Stage 1 failed!");
+    if (!valstage0 || !valstage1) {
+        Debug("WARNING: Validation Stage %i failed!", (valstage0) ? 1 : 0);
         if (param & N_EMUNAND) {
             Debug("!DO NOT RESTORE THIS TO SYSNAND!");
             Debug("Starting from scratch is recommended");
@@ -492,7 +493,10 @@ u32 ValidateDowngrade(u32 param)
         Debug("");
     }
     
-    return (valstage2) ? 0 : (valstage1) ? 2 : 1;
+    if (!(valstage0 && valstage1 && valstage2) && !(param & N_EMUNAND))
+        UnblockSlot0x05Restore();
+    
+    return (valstage2) ? 0 : (valstage1 && valstage0) ? 2 : 1;
 }
 
 u32 OneClickSetup(u32 param)

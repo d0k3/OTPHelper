@@ -188,9 +188,14 @@ u32 CheckNandIntegrity(const char* path, bool block_key0x05)
     
     if (path) FileClose();
     if ((ret != 0) && (!path) && (!emunand_header)) // if a SysNAND check failed, unblock key0x05 restores
-        block_key0x05_override = true;
+        UnblockSlot0x05Restore();
     
     return ret;
+}
+
+u32 UnblockSlot0x05Restore(void) {
+    block_key0x05_override = true;
+    return 0;
 }
 
 u32 OutputFileNameSelector(char* filename, const char* basename, char* extension) {
