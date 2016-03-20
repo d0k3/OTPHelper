@@ -178,15 +178,24 @@ u32 SwitchCtrNandCrypto(u32 param)
     Debug("Switching CTRNAND partion 0x%u -> 0x%u...", (to_o3ds) ? 5 : 4, (to_o3ds) ? 4 : 5);
     u32 size = partition_from->size;
     u32 offset = partition_from->offset;
+    u32 result = 0;
     for (u32 i = 0; i < size; i += NAND_SECTOR_SIZE * SECTORS_PER_READ) {
         u32 read_bytes = min(NAND_SECTOR_SIZE * SECTORS_PER_READ, (size - i));
         ShowProgress(i, size);
-        DecryptNandToMem(buffer, offset + i, read_bytes, partition_from);
-        EncryptMemToNand(buffer, offset + i, read_bytes, partition_to);
+        if (DecryptNandToMem(buffer, offset + i, read_bytes, partition_from) != 0) {
+            Debug("NAND read failure");
+            result = 1;
+            break;
+        }
+        if (EncryptMemToNand(buffer, offset + i, read_bytes, partition_to) != 0) {
+            Debug("NAND write failure");
+            result = 1;
+            break;
+        }
     }
     ShowProgress(0, 0);
     
-    return 0;
+    return result;
 }
 
 u32 DumpNandHeader(u32 param)

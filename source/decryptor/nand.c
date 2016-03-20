@@ -714,6 +714,7 @@ u32 RestoreNand(u32 param)
                 break;
             }
             if (WriteNandSectors(i, read_sectors, buffer) != 0) {
+                Debug((emunand_header) ? "SD card write failure" : "SysNAND write failure");
                 result = 1;
                 break;
             }
@@ -747,8 +748,10 @@ u32 RestoreNand(u32 param)
         for (u32 i = 1; i < n_sectors; i += SECTORS_PER_READ) {
             u32 read_sectors = min(SECTORS_PER_READ, (n_sectors - i));
             ShowProgress(i, n_sectors);
-            if (sdmmc_sdcard_readsectors(l_emunand_offset + i, read_sectors, buffer) != 0)
+            if (sdmmc_sdcard_readsectors(l_emunand_offset + i, read_sectors, buffer) != 0) {
+                Debug("SD card read failure");
                 return 1;
+            }
             if (WriteNandSectors(i, read_sectors, buffer) != 0)
                 return 1;
         }
