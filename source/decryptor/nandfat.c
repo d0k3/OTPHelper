@@ -7,7 +7,7 @@
 #include "decryptor/nandfat.h"
 
 
-u32 SeekFileInNand(u32* offset, u32* size, const char* path, PartitionInfo* partition)
+u32 SeekFileInNand(u32* offset, u32* size, const char* path, PartitionInfo* partition, u8* sha256)
 {
     // poor mans NAND FAT file seeker:
     // - path must be in FAT 8+3 format, without dots or slashes
@@ -50,10 +50,20 @@ u32 SeekFileInNand(u32* offset, u32* size, const char* path, PartitionInfo* part
             u32 p; // search for path in fat folder structure, accept '?' wildcards
             for (p = 0; (p < 8+3) && (path[p] == '?' || buffer[i+p] == path[p]); p++);
             if (p != 8+3) continue;
-            // entry found, store offset and move on
+            // candidate found, store offset and move on
             fat_pos = getle16(buffer + i + 0x1A);
-            *offset = p_offset + cluster_start + (fat_pos - 2) * cluster_size;
-            *size = getle32(buffer + i + 0x1C);
+            u32 tmp_offset = p_offset + cluster_start + (fat_pos - 2) * cluster_size;
+            u32 tmp_size = getle32(buffer + i + 0x1C);
+            // check hash
+            if ((sha256 != NULL) && strnlen(path, 256) == 8+3) {
+                u8 l_sha256[32];
+                DecryptNandToHash(l_sha256, tmp_offset, tmp_size, partition);
+                if (memcmp(sha256, l_sha256, 32) != 0)
+                    continue;
+            }
+            // found!
+            *offset = tmp_offset;
+            *size = tmp_size;
             found = true;
             break;
         }
@@ -67,7 +77,7 @@ u32 SeekFileInNand(u32* offset, u32* size, const char* path, PartitionInfo* part
         DecryptNandToMem(buffer, p_offset + fat_start, fat_size / fat_count, partition);
         for (u32 i = 0; i < (*size - 1) / cluster_size; i++) {
             if (*(((u16*) buffer) + fat_pos + i) != fat_pos + i + 1)
-                return 1;
+                return 2;
         } // no need to check the files last FAT table entry
     }
     
@@ -82,7 +92,7 @@ u32 SeekTitleInNandDb(u32* tmd_id, u64 titleId)
     
     u32 offset_db;
     u32 size_db;
-    if (SeekFileInNand(&offset_db, &size_db, "DBS        TITLE   DB ", ctrnand_info) != 0)
+    if (SeekFileInNand(&offset_db, &size_db, "DBS        TITLE   DB ", ctrnand_info, NULL) != 0)
         return 1; // database not found
     if (size_db != 0x64C00)
         return 1; // bad database size
@@ -107,7 +117,7 @@ u32 SeekTitleInNandDb(u32* tmd_id, u64 titleId)
     return (found) ? 0 : 1;
 }
 
-u32 SeekTitleInNand(u32* offset_tmd, u32* size_tmd, u32* offset_app, u32* size_app, u64 titleId, u32 max_cnt)
+u32 SeekTitleInNand(u32* offset_tmd, u32* size_tmd, u32* offset_app, u32* size_app, u64 titleId, u8* tmd_sha256, u32 max_cnt)
 {
     PartitionInfo* ctrnand_info = GetPartitionInfo(P_CTRNAND);
     u8* buffer = (u8*) 0x20316000;
@@ -121,13 +131,13 @@ u32 SeekTitleInNand(u32* offset_tmd, u32* size_tmd, u32* offset_app, u32* size_a
     if (SeekTitleInNandDb(&tmd_id, titleId) == 0) {
         char path[64];
         sprintf(path, "TITLE      %08X   %08X   CONTENT    %08XTMD", (unsigned int) tid_high, (unsigned int) tid_low, (unsigned int) tmd_id);
-        if (SeekFileInNand(offset_tmd, size_tmd, path, ctrnand_info) == 0)
+        if (SeekFileInNand(offset_tmd, size_tmd, path, ctrnand_info, tmd_sha256) == 0)
             found_tmd = true;
     }
     if (!found_tmd) { // Method 2: Search TMD in file system
         char path[64];
         sprintf(path, "TITLE      %08X   %08X   CONTENT    ????????TMD", (unsigned int) tid_high, (unsigned int) tid_low);
-        if (SeekFileInNand(offset_tmd, size_tmd, path, ctrnand_info) == 0)
+        if (SeekFileInNand(offset_tmd, size_tmd, path, ctrnand_info, tmd_sha256) == 0)
             found_tmd = true;
     }
     if (!found_tmd) // TMD not found
@@ -144,16 +154,22 @@ u32 SeekTitleInNand(u32* offset_tmd, u32* size_tmd, u32* offset_app, u32* size_a
     u32 size_tmd_expected = size_sig + 0xC4 + (0x40 * 0x24) + (cnt_count * 0x30);
     if (*size_tmd < size_tmd_expected) // TMD does not match expected size
         return S_TMD_IS_CORRUPT;
-    buffer += size_sig + 0xC4 + (0x40 * 0x24);
+    buffer += size_sig + 0xC4 + (0x40 * 0x24); // this now points to the content list
     
+    bool fragmented_apps = false;
+    memset(offset_app, 0x00, max_cnt * sizeof(u32));
+    memset(size_app, 0x00, max_cnt * sizeof(u32));
     for (u32 i = 0; i < cnt_count && i < max_cnt; i++) {
         char path[64];
         u32 cnt_id = getbe32(buffer + (0x30 * i));
+        u8* app_sha256 = buffer + (0x30 * i) + 0x10;
         if (i >= max_cnt) continue; // skip app
         sprintf(path, "TITLE      %08X   %08X   CONTENT    %08XAPP", (unsigned int) tid_high, (unsigned int) tid_low, (unsigned int) cnt_id);
-        if (SeekFileInNand(offset_app + i, size_app + i, path, ctrnand_info) != 0)
-            return S_APP_NOT_FOUND;
+        u32 seek_state = SeekFileInNand(offset_app + i, size_app + i, path, ctrnand_info, app_sha256);
+        if (seek_state == 2) fragmented_apps = true;
+        else if (seek_state != 0) return S_APP_NOT_FOUND;
     }
+    if (fragmented_apps) return S_APP_FRAGMENTED;
     
     return S_TITLE_FOUND;
 }

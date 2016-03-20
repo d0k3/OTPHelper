@@ -307,9 +307,8 @@ u32 ValidateDowngrade(u32 param)
     u32 n_tmd_success = 0;
     u32 n_skipped = 0;
     u32 n_not_found = 0;
-    u32 n_not_matched = 0;
     u32 n_app_not_found = 0;
-    u32 n_app_not_matched = 0;
+    u32 n_app_fragmented = 0;
     u32 n_beyound_border = 0;
     
     u8  l_sha256[32];
@@ -338,47 +337,48 @@ u32 ValidateDowngrade(u32 param)
     
     // find out 3DS region
     u8* secureInfo = BUFFER_ADDRESS;
-    if (SeekFileInNand(&offset, &size, "RW         SYS        SECURE~?   ", ctrnand_info) != 0) {
+    if (SeekFileInNand(&offset, &size, "RW         SYS        SECURE~?   ", ctrnand_info, NULL) != 0) {
         Debug("SecureInfo_A not found!");
         valstage0 = false;
-    }
-    if (DecryptNandToMem(secureInfo, offset, size, ctrnand_info) != 0)
-        valstage0 = false;
-    // check SecureInfo_a for corruption
-    if ((secureInfo[0x101] == '\0') && (secureInfo[0x110] == '\0')) {
-        char* sn = (char*) secureInfo + 0x102;
-        Debug("Your serial number is: %s", sn);
-        // check serial number
-        u32 sn_chk = 0;
-        for (; (sn_chk < 0xF) && (sn[sn_chk] >= 'A') && (sn[sn_chk] <= 'Z'); sn_chk++);
-        if ((sn_chk < 2) || (sn_chk > 4)) { // less than 2, more than 4 uppercase letters
-            Debug("Bad serial number!");
+    } else {
+        if (DecryptNandToMem(secureInfo, offset, size, ctrnand_info) != 0)
+            valstage0 = false;
+        // check SecureInfo_A for corruption
+        if ((secureInfo[0x101] == '\0') && (secureInfo[0x110] == '\0')) {
+            char* sn = (char*) secureInfo + 0x102;
+            Debug("Your serial number is: %s", sn);
+            // check serial number
+            u32 sn_chk = 0;
+            for (; (sn_chk < 0xF) && (sn[sn_chk] >= 'A') && (sn[sn_chk] <= 'Z'); sn_chk++);
+            if ((sn_chk < 2) || (sn_chk > 4)) { // less than 2, more than 4 uppercase letters
+                Debug("Bad serial number!");
+                valstage0 = false;
+            }
+            for (; (sn_chk < 0xF) && (sn[sn_chk] >= '0') && (sn[sn_chk] <= '9'); sn_chk++);
+            if ((sn_chk >= 0xF) || (sn[sn_chk] != '\0')) { // numerical part fail?
+                Debug("Bad serial number!");
+                valstage0 = false;
+            }
+        } else {
+            Debug("SecureInfo_A may be corrupted!");
             valstage0 = false;
         }
-        for (; (sn_chk < 0xF) && (sn[sn_chk] >= '0') && (sn[sn_chk] <= '9'); sn_chk++);
-        if ((sn_chk >= 0xF) || (sn[sn_chk] != '\0')) { // numerical part fail?
-            Debug("Bad serial number!");
-            valstage0 = false;
+        if (secureInfo[0x100] == 0) {
+            Debug("Your region is: JAP");
+            checklist = (TitleHashInfo*) JAP_sha256;
+            n_titles = JAP_sha256_size / sizeof(TitleHashInfo);
+        } else if (secureInfo[0x100] == 1) {
+            Debug("Your region is: USA");
+            checklist = (TitleHashInfo*) USA_sha256;
+            n_titles = USA_sha256_size / sizeof(TitleHashInfo);
+        } else if (secureInfo[0x100] == 2) {
+            Debug("Your region is: EUR");
+            checklist = (TitleHashInfo*) EUR_sha256;
+            n_titles = EUR_sha256_size / sizeof(TitleHashInfo);
+        } else {
+            Debug("Unsupported region");
+            return 1;
         }
-    } else {
-        Debug("SecureInfo_A may be corrupted!");
-        valstage0 = false;
-    }
-    if (secureInfo[0x100] == 0) {
-        Debug("Your region is: JAP");
-        checklist = (TitleHashInfo*) JAP_sha256;
-        n_titles = JAP_sha256_size / sizeof(TitleHashInfo);
-    } else if (secureInfo[0x100] == 1) {
-        Debug("Your region is: USA");
-        checklist = (TitleHashInfo*) USA_sha256;
-        n_titles = USA_sha256_size / sizeof(TitleHashInfo);
-    } else if (secureInfo[0x100] == 2) {
-        Debug("Your region is: EUR");
-        checklist = (TitleHashInfo*) EUR_sha256;
-        n_titles = EUR_sha256_size / sizeof(TitleHashInfo);
-    } else {
-        Debug("Unsupported region");
-        return 1;
     }
     
     for (u32 t = 0; (t < n_titles) && valstage0; t++) {
@@ -395,16 +395,10 @@ u32 ValidateDowngrade(u32 param)
             continue;
         }   
         
-        title_state = SeekTitleInNand(&offset, &size, offset_app, size_app, checklist[t].titleId, max_num_apps);
+        title_state = SeekTitleInNand(&offset, &size, offset_app, size_app, checklist[t].titleId, checklist[t].sha256, max_num_apps);
         if ((title_state == S_TMD_NOT_FOUND) || (title_state == S_TMD_IS_CORRUPT)) {
             Debug("TMD not found or corrupt");
             n_not_found++;
-            continue;
-        }
-        DecryptNandToHash(l_sha256, offset, size, ctrnand_info);
-        if (memcmp(l_sha256, checklist[t].sha256, 32) != 0) {
-            Debug("TMD hash mismatch");
-            n_not_matched++;
             continue;
         }
         n_tmd_success++;
@@ -415,43 +409,28 @@ u32 ValidateDowngrade(u32 param)
         }
         
         // TMD verified succesfully, now verifying apps
-        if (title_state != S_APP_NOT_FOUND) {
-            u8* tmd_data = (u8*) 0x20316000;
-            if (DecryptNandToMem(tmd_data, offset, size, ctrnand_info) != 0)
-                return 1; 
-            tmd_data += (tmd_data[3] == 3) ? 0x240 : (tmd_data[3] == 4) ? 0x140 : 0x80;
-            u8* content_list = tmd_data + 0xC4 + (64 * 0x24);
-            u32 cnt_count = getbe16(tmd_data + 0x9E);
-            u32 n_ok = max_num_apps;
-            for (u32 i = 0; i < max_num_apps && i < cnt_count; i++) {
-                if (offset_app[i] + size_app[i] > ctrnand_o3ds_border) {
-                    n_ok = i;
+        if (title_state == S_APP_NOT_FOUND) {
+            Debug("APP not found or corrupt");
+            n_app_not_found++;
+            continue;
+        } else if (title_state == S_APP_FRAGMENTED) {
+            Debug("APP is fragmented");
+            n_app_fragmented++;
+            continue;
+        } else {
+            u32 n_chk = 0;
+            for (; n_chk < max_num_apps; n_chk++) {
+                if (!size_app[n_chk]) {
+                    break;
+                } else if (offset_app[n_chk] + size_app[n_chk] > ctrnand_o3ds_border) {
+                    Debug("APP(%i) is in unmapped area", n_chk);
                     break;
                 }
             }
-            if ((n_ok < max_num_apps) && (n_ok < cnt_count)) {
-                Debug("APP is in unmapped area");
+            if ((n_chk < max_num_apps) && size_app[n_chk]) {
                 n_beyound_border++;
                 continue;
             }
-            n_ok = max_num_apps;
-            for (u32 i = 0; i < max_num_apps && i < cnt_count; i++) {
-                u8* app_sha256 = content_list + (0x30 * i) + 0x10;
-                DecryptNandToHash(l_sha256, offset_app[i], size_app[i], ctrnand_info);
-                if (memcmp(l_sha256, app_sha256, 32) != 0) {
-                    n_ok = i;
-                    break;
-                }
-            }
-            if ((n_ok < max_num_apps) && (n_ok < cnt_count)) {
-                Debug("APP hash mismatch");
-                n_app_not_matched++;
-                continue;
-            }
-        } else {
-            Debug("APP not found or fragmented");
-            n_app_not_found++;
-            continue;
         }
         
         // full success if arriving here
@@ -459,15 +438,15 @@ u32 ValidateDowngrade(u32 param)
     }
     ShowProgress(0, 0);
     
-    bool valstage1 = (n_tmd_success - n_app_not_matched - n_beyound_border == n_titles - n_skipped);
-    bool valstage2 = (n_full_success == n_titles - n_skipped);
+    bool valstage1 = (n_tmd_success - n_app_not_found - n_beyound_border == n_titles - n_skipped) && valstage0;
+    bool valstage2 = (n_full_success == n_titles - n_skipped) && valstage0;
     
     Debug("");
     Debug("Validation Stage 0: %s", (valstage0) ? "SUCCESS" : "FAILED");
     Debug("Validation Stage 1: %s", (valstage1) ? "SUCCESS" : "FAILED");
     Debug("Validation Stage 2: %s", (valstage2) ? "SUCCESS" : "FAILED");
     
-    if (n_full_success < n_titles) {
+    if ((n_full_success < n_titles) && valstage0) {
         if (n_skipped)
             Debug(" # TWL titles        : %3u", n_skipped);
         if (n_beyound_border)
@@ -475,11 +454,10 @@ u32 ValidateDowngrade(u32 param)
         if (n_tmd_success < n_titles) {
             Debug(" # TMD success       : %3u", n_tmd_success);
             Debug(" # TMD not found     : %3u", n_not_found);
-            Debug(" # TMD hash mismatch : %3u", n_not_matched);
         }
         Debug(" # APP success       : %3u", n_full_success);
-        Debug(" # APP fragmented    : %3u", n_app_not_found); // or not found, but fragmentation is much more likely
-        Debug(" # APP hash mismatch : %3u", n_app_not_matched);
+        Debug(" # APP not found     : %3u", n_app_not_found); 
+        Debug(" # APP fragmented    : %3u", n_app_fragmented);
     }
     
     Debug("");
