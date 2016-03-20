@@ -48,7 +48,7 @@ u32 SeekFileInNand(u32* offset, u32* size, const char* path, PartitionInfo* part
             else if (memcmp(buffer + i, zeroes, 8+3) == 0)
                 return 1;
             u32 p; // search for path in fat folder structure, accept '?' wildcards
-            for (p = 0; (p < 8+3) && (path[p] == '?' || buffer[i+p] == path[p]); p++);
+            for (p = 0; (p < 8+3) && (path[p] == '?' || buffer[i+p] == path[p] || buffer[i+p] == (path[p] + 'a' - 'A')); p++);
             if (p != 8+3) continue;
             // candidate found, store offset and move on
             fat_pos = getle16(buffer + i + 0x1A);
