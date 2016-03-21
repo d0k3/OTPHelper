@@ -393,7 +393,7 @@ u32 ValidateDowngrade(u32 param)
             Debug("Is a TWL title, skipped");
             n_skipped++;
             continue;
-        }   
+        }
         
         title_state = SeekTitleInNand(&offset, &size, offset_app, size_app, checklist[t].titleId, checklist[t].sha256, max_num_apps);
         if ((title_state == S_TMD_NOT_FOUND) || (title_state == S_TMD_IS_CORRUPT)) {

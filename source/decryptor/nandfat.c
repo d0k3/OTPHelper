@@ -16,10 +16,11 @@ u32 SeekFileInNand(u32* offset, u32* size, const char* path, PartitionInfo* part
     // - dirs must not exceed 1024 entries
     // - fragmentation not supported
     
-    u8* buffer = BUFFER_ADDRESS;
+    u8* buffer = (u8*) 0x20400000;
     u32 p_size = partition->size;
     u32 p_offset = partition->offset;
     u32 fat_pos = 0;
+    bool sha256_match = false;
     bool found = false;
     
     if (strnlen(path, 256) % (8+3) != 0)
@@ -58,8 +59,10 @@ u32 SeekFileInNand(u32* offset, u32* size, const char* path, PartitionInfo* part
             if ((sha256 != NULL) && strnlen(path, 256) == 8+3) {
                 u8 l_sha256[32];
                 DecryptNandToHash(l_sha256, tmp_offset, tmp_size, partition);
-                if (memcmp(sha256, l_sha256, 32) != 0)
-                    continue;
+                if (memcmp(sha256, l_sha256, 32) != 0) {
+                    if (strchr(path, '?') != NULL)
+                        continue;
+                } else sha256_match = true;
             }
             // found!
             *offset = tmp_offset;
@@ -78,10 +81,10 @@ u32 SeekFileInNand(u32* offset, u32* size, const char* path, PartitionInfo* part
         for (u32 i = 0; i < (*size - 1) / cluster_size; i++) {
             if (*(((u16*) buffer) + fat_pos + i) != fat_pos + i + 1)
                 return 2;
-        } // no need to check the files last FAT table entry
+        } // no need to check the files' last FAT table entry
     }
     
-    return (found) ? 0 : 1;
+    return (found) ? (((sha256 && sha256_match) || !sha256) ? 0 : 1) : 1;
 }
 
 u32 SeekTitleInNandDb(u32* tmd_id, u64 titleId)
