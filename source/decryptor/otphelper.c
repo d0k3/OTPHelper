@@ -323,7 +323,7 @@ u32 ValidateDowngrade(u32 param)
     }
     
     // perform basic NAND validation
-    if (CheckNandIntegrity(NULL, false) != 0) {
+    if (CheckNandIntegrity(NULL) != 0) {
         Debug("Basic NAND integrity check failed!");
         valstage0 = false;
     }
@@ -479,9 +479,6 @@ u32 ValidateDowngrade(u32 param)
         Debug("and run the Downgrade Validator again");
         Debug("");
     }
-    
-    if (!(valstage0 && valstage1 && valstage2) && !(param & N_EMUNAND))
-        UnblockSlot0x05Restore();
     
     return (valstage2) ? 0 : (valstage1 && valstage0) ? 2 : 1;
 }

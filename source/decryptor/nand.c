@@ -27,8 +27,6 @@ static const u8 whatisthis[16] =
 static u32 emunand_header = 0;
 static u32 emunand_offset = 0;
 
-static bool block_key0x05_override = false;
-
 
 u32 CheckEmuNand(void)
 {
@@ -124,7 +122,7 @@ u32 WriteNandHeader(u8* in)
     return (WriteNandSectors(0, 1, in) == 0) ? 0 : 1;
 }
 
-u32 CheckNandIntegrity(const char* path, bool block_key0x05)
+u32 CheckNandIntegrity(const char* path)
 {
     // this only performs safety checks
     u8* buffer = BUFFER_ADDRESS;
@@ -151,14 +149,6 @@ u32 CheckNandIntegrity(const char* path, bool block_key0x05)
     nand_hdr_type = (ret == 0) ? CheckNandHeader(buffer) : 0;
     if ((ret == 0) && (nand_hdr_type == NAND_HDR_UNK)) {
         Debug("NAND header not recognized!");
-        ret = 1;
-    } else if (block_key0x05 && !block_key0x05_override && (nand_hdr_type == NAND_HDR_N3DS)) {
-        // Don't allow injecting N3DS type NAND images
-        // this is very OTPHelper specific!
-        // remove this when reusing the code
-        Debug("This is a slot0x5 (N3DS) type NAND image!");
-        Debug("Sorry, you can't inject that, and if I");
-        Debug("saved your 3DS, you owe me a beer.");
         ret = 1;
     }
     
@@ -187,15 +177,8 @@ u32 CheckNandIntegrity(const char* path, bool block_key0x05)
     }
     
     if (path) FileClose();
-    if ((ret != 0) && (!path) && (!emunand_header)) // if a SysNAND check failed, unblock key0x05 restores
-        UnblockSlot0x05Restore();
     
     return ret;
-}
-
-u32 UnblockSlot0x05Restore(void) {
-    block_key0x05_override = true;
-    return 0;
 }
 
 u32 OutputFileNameSelector(char* filename, const char* basename, char* extension) {
@@ -692,13 +675,8 @@ u32 RestoreNand(u32 param)
         if (InputFileNameSelector(filename, "NAND.bin", NULL, NULL, 0, nand_size) != 0)
             return 1;
         
-        #ifdef EXEC_OLDSPIDER
-        if (CheckNandIntegrity(filename, false) != 0)
+        if (CheckNandIntegrity(filename) != 0)
             return 1;
-        #else
-        if (CheckNandIntegrity(filename, !(param & N_EMUNAND)) != 0)
-            return 1;
-        #endif
         
         Debug("Restoring %sNAND. Size (MB): %u", (param & N_EMUNAND) ? "Emu" : "Sys", nand_size / (1024 * 1024));
 
@@ -728,13 +706,8 @@ u32 RestoreNand(u32 param)
         
         if (SetNand(true, false) != 0)
             return 1;
-        #ifdef EXEC_OLDSPIDER
-        if (CheckNandIntegrity(NULL, false) != 0)
+        if (CheckNandIntegrity(NULL) != 0)
             return 1;
-        #else
-        if (CheckNandIntegrity(NULL, !(param & N_EMUNAND)) != 0)
-            return 1;
-        #endif
         ReadNandHeader(buffer);
         l_emunand_offset = emunand_offset;
         if (SetNand(false, false) != 0)
@@ -816,7 +789,7 @@ u32 InjectNandPartition(u32 param)
 u32 ValidateNand(u32 param)
 {
     if (!(param & N_NANDFILE)) {
-        if (CheckNandIntegrity(NULL, false) != 0)
+        if (CheckNandIntegrity(NULL) != 0)
             return 1;
     } else {
         u32 nand_size = getMMCDevice(0)->total_size * NAND_SECTOR_SIZE;
@@ -824,7 +797,7 @@ u32 ValidateNand(u32 param)
         // user file select
         if (InputFileNameSelector(filename, "NAND.bin", NULL, NULL, 0, nand_size) != 0)
             return 1;
-        if (CheckNandIntegrity(filename, false) != 0)
+        if (CheckNandIntegrity(filename) != 0)
             return 1;
     }
     
