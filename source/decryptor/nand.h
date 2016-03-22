@@ -14,6 +14,8 @@
 
 #define PG_FORCESLOT4 (1<<0)
 
+// allow smaller files - only available for NAND partition injection
+#define N_SMALLER   (1<<25)
 // use NAND dump instead of NAND - only available for few operations
 #define N_NANDFILE  (1<<26)
 // direct EmuNAND -> SysNAND clone

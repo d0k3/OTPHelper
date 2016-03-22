@@ -14,9 +14,9 @@ MenuInfo menu[] =
     {
         #ifdef EXEC_OLDSPIDER
         #ifndef BUILD_NAME
-        "OTPHelper FW 2.1 Main Menu", 8,
+        "OTPHelper FW 2.1 Main Menu", 9,
         #else
-        BUILD_NAME, 8,
+        BUILD_NAME, 9,
         #endif
         {
             { "Dump otp.bin (0x100)",         DumpOtp,                0 },
@@ -26,13 +26,14 @@ MenuInfo menu[] =
             { "NAND Validation Options...",   NULL,                   SUBMENU_START + 0 },
             { "NAND Backup & Restore...",     NULL,                   SUBMENU_START + 1 },
             { "CTRNAND Dump & Inject...",     NULL,                   SUBMENU_START + 2 },
-            { "NAND XORpads...",              NULL,                   SUBMENU_START + 3 }
+            { "FIRM Dump & Inject...",        NULL,                   SUBMENU_START + 3 },
+            { "NAND XORpads...",              NULL,                   SUBMENU_START + 4 }
         }
         #else
         #ifndef BUILD_NAME
-        "OTPHelper N3DS Main Menu", 7,
+        "OTPHelper N3DS Main Menu", 8,
         #else
-        BUILD_NAME, 7,
+        BUILD_NAME, 8,
         #endif
         {
             { "One Click Setup",              OneClickSetup,          N_NANDWRITE },
@@ -41,7 +42,8 @@ MenuInfo menu[] =
             { "NAND Validation Options...",   NULL,                   SUBMENU_START + 0 },
             { "NAND Backup & Restore...",     NULL,                   SUBMENU_START + 1 },
             { "CTRNAND Dump & Inject...",     NULL,                   SUBMENU_START + 2 },
-            { "NAND XORpads...",              NULL,                   SUBMENU_START + 3 }
+            { "FIRM Dump & Inject...",        NULL,                   SUBMENU_START + 3 },
+            { "NAND XORpads...",              NULL,                   SUBMENU_START + 4 }
         }
         #endif
     },
@@ -72,6 +74,19 @@ MenuInfo menu[] =
             { "SysNAND CTRNAND Inject",       &InjectNandPartition,   N_NANDWRITE | P_CTRNAND },
             { "EmuNAND CTRNAND Dump",         &DecryptNandPartition,  N_EMUNAND | P_CTRNAND },
             { "EmuNAND CTRNAND Inject",       &InjectNandPartition,   N_NANDWRITE | N_EMUNAND | P_CTRNAND }
+        }
+    },
+    {
+        "FIRM Dump & Inject", 8,
+        {            
+            { "SysNAND FIRM0 Dump",           &DecryptNandPartition,  P_FIRM0 },
+            { "SysNAND FIRM0 Inject",         &InjectNandPartition,   N_NANDWRITE | N_SMALLER | P_FIRM0 },
+            { "EmuNAND FIRM0 Dump",           &DecryptNandPartition,  N_EMUNAND | P_FIRM0 },
+            { "EmuNAND FIRM0 Inject",         &InjectNandPartition,   N_NANDWRITE | N_SMALLER | N_EMUNAND | P_FIRM0 },
+            { "SysNAND FIRM1 Dump",           &DecryptNandPartition,  P_FIRM1 },
+            { "SysNAND FIRM1 Inject",         &InjectNandPartition,   N_NANDWRITE | N_SMALLER | P_FIRM1 },
+            { "EmuNAND FIRM1 Dump",           &DecryptNandPartition,  N_EMUNAND | P_FIRM1 },
+            { "EmuNAND FIRM1 Inject",         &InjectNandPartition,   N_NANDWRITE | N_SMALLER | N_EMUNAND | P_FIRM1 }
         }
     },
     {

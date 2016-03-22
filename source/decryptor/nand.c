@@ -740,6 +740,7 @@ u32 InjectNandPartition(u32 param)
     PartitionInfo* p_info = NULL;
     char filename[64];
     u8 magic[NAND_SECTOR_SIZE];
+    u32 i_size = 0;
     
     if (!(param & N_NANDWRITE)) // developer screwup protection
         return 1;
@@ -754,11 +755,12 @@ u32 InjectNandPartition(u32 param)
         Debug("No partition to inject to");
         return 1;
     }
+    i_size = p_info->size;
     
-    Debug("Encrypting & Injecting %s, size (MB): %u", p_info->name, p_info->size / (1024 * 1024));
+    Debug("Encrypting & Injecting %s, size (MB): %u", p_info->name, i_size / (1024 * 1024));
     // User file select
     if (InputFileNameSelector(filename, p_info->name, "bin",
-        p_info->magic, (p_info->magic[0] != 0xFF) ? 8 : 0, p_info->size) != 0)
+        p_info->magic, (p_info->magic[0] != 0xFF) ? 8 : 0, (param & N_SMALLER) ? 0 : i_size) != 0)
         return 1;
     
     // Encryption check
@@ -780,10 +782,12 @@ u32 InjectNandPartition(u32 param)
             FileClose();
             return 1;
         }
+        if (param & N_SMALLER)
+            i_size = FileGetSize();
         FileClose();
     }
     
-    return EncryptFileToNand(filename, p_info->offset, p_info->size, p_info);
+    return EncryptFileToNand(filename, p_info->offset, i_size, p_info);
 }
 
 u32 ValidateNand(u32 param)
