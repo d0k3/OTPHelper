@@ -79,10 +79,10 @@ u32 UnmountSd()
     Debug("SD is unmounted, you may remove it now.");
     Debug("Put the SD card back in before pressing B!");
     Debug("");
-    Debug("(B to return, START to reboot)");
+    Debug("(B to return)");
     while (true) {
         pad_state = InputWait();
-        if (((pad_state & BUTTON_B) && InitFS()) || (pad_state & BUTTON_START))
+        if ((pad_state & BUTTON_B) && InitFS())
             break;
     }
     
@@ -104,7 +104,7 @@ void DrawMenu(MenuInfo* currMenu, u32 index, bool fullDraw, bool subMenu)
         DrawStringF(menublock_x0, menublock_y1 +  0, top_screen, "==============================");
         DrawStringF(menublock_x0, menublock_y1 + 10, top_screen, (subMenu) ? "A: Choose  B: Return" : "A: Choose");
         DrawStringF(menublock_x0, menublock_y1 + 20, top_screen, "SELECT: Unmount SD");
-        DrawStringF(menublock_x0, menublock_y1 + 30, top_screen, "START:  Reboot");
+        DrawStringF(menublock_x0, menublock_y1 + 30, top_screen, "START+\x1A\x1B:  Reboot/Shutdown");
         DrawStringF(menublock_x0, SCREEN_HEIGHT - 30, top_screen, "SD card: %lluMB/%lluMB", RemainingStorageSpace() / 1024 / 1024, TotalStorageSpace() / 1024 / 1024);
         DrawStringF(menublock_x0, SCREEN_HEIGHT - 20, top_screen, "SD EmuNAND: %s", (emunand_state == EMUNAND_READY) ? "EmuNAND ready" : (emunand_state == EMUNAND_GATEWAY) ? "GW EmuNAND" : (emunand_state == EMUNAND_REDNAND) ? "RedNAND" : (emunand_state > 3) ? "MultiNAND" : "no EmuNAND");
     }
@@ -292,7 +292,7 @@ u32 ProcessMenu(MenuInfo* info, u32 n_entries_main)
         } else {
             full_draw = false;
         }
-        if (pad_state & BUTTON_START) {
+        if ((pad_state & BUTTON_START) && (pad_state & (BUTTON_LEFT|BUTTON_RIGHT))) {
             result = (pad_state & BUTTON_LEFT) ? MENU_EXIT_POWEROFF : MENU_EXIT_REBOOT;
             break;
         }
