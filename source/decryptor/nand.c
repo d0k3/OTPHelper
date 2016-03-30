@@ -9,6 +9,10 @@
 #include "decryptor/otphelper.h"
 #include "fatfs/sdmmc.h"
 
+// minimum sizes for O3DS / N3DS NAND
+// see: http://3dbrew.org/wiki/Flash_Filesystem
+#define NAND_MIN_SIZE ((GetUnitPlatform() == PLATFORM_3DS) ? 0x3AF00000 : 0x4D800000)
+
 // see: http://3dbrew.org/wiki/Flash_Filesystem
 static PartitionInfo partitions[] = {
     { "TWLN",    {0xE9, 0x00, 0x00, 0x54, 0x57, 0x4C, 0x20, 0x20}, 0x00012E00, 0x08FB5200, 0x3, AES_CNT_TWLNAND_MODE },
@@ -21,7 +25,7 @@ static PartitionInfo partitions[] = {
     { "CTRNAND", {0xE9, 0x00, 0x00, 0x43, 0x54, 0x52, 0x20, 0x20}, 0x0B95AE00, 0x41D2D200, 0x4, AES_CNT_CTRNAND_MODE }  // NO3DS
 };
 
-static const u8 whatisthis[16] =
+static const u8 sector0xC0D3[16] =
     { 0xF1, 0x44, 0x59, 0x62, 0xB3, 0x96, 0x88, 0xA8, 0x54, 0xBA, 0x82, 0x14, 0xB3, 0x6B, 0xD5, 0xF6 };
 
 static u32 emunand_header = 0;
@@ -32,22 +36,25 @@ u32 CheckEmuNand(void)
 {
     u8* buffer = BUFFER_ADDRESS;
     u32 nand_size_sectors = getMMCDevice(0)->total_size;
+    u32 nand_size_sectors_min = NAND_MIN_SIZE / NAND_SECTOR_SIZE;
 
     // check the MBR for presence of a hidden partition
     sdmmc_sdcard_readsectors(0, 1, buffer);
     u32 hidden_sectors = getle32(buffer + 0x1BE + 0x8);
     
-    if (nand_size_sectors < hidden_sectors) {
-        // check for Gateway type EmuNAND
-        sdmmc_sdcard_readsectors(nand_size_sectors, 1, buffer);
-        if (memcmp(buffer + 0x100, "NCSD", 4) == 0)
-            return EMUNAND_GATEWAY;
+    if (nand_size_sectors_min < hidden_sectors) {
         // check for RedNAND type EmuNAND
         sdmmc_sdcard_readsectors(1, 1, buffer);
         if (memcmp(buffer + 0x100, "NCSD", 4) == 0)
             return EMUNAND_REDNAND;
-        // EmuNAND ready but not set up
-       return EMUNAND_READY; 
+        if (nand_size_sectors < hidden_sectors) {
+           // check for Gateway type EmuNAND
+            sdmmc_sdcard_readsectors(nand_size_sectors, 1, buffer);
+            if (memcmp(buffer + 0x100, "NCSD", 4) == 0)
+                return EMUNAND_GATEWAY;
+            // EmuNAND ready but not set up
+            return EMUNAND_READY;
+        }
     }
     
     return EMUNAND_NOT_READY;
@@ -412,7 +419,7 @@ u32 SetupNandCrypto(u8* ctr, u32 offset)
             memset(info.ctr, 0x00, 16);
             memset(info.keyY, 0x00, 16);
             
-            memcpy(CtrNandKeyY, whatisthis, 16);
+            memcpy(CtrNandKeyY, sector0xC0D3, 16);
             CryptBuffer(&info);
             
             setup_aeskeyY(0x05, CtrNandKeyY);
