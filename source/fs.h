@@ -52,6 +52,9 @@ uint64_t RemainingStorageSpace();
 /** Gets total space on SD card in bytes */
 uint64_t TotalStorageSpace();
 
+/** Gets number of hidden sectors between MBR and FAT FS **/
+uint32_t NumHiddenSectors();
+
 void FileClose();
 
 void DirClose();

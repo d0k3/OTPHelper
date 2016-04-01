@@ -39,8 +39,7 @@ u32 CheckEmuNand(void)
     u32 nand_size_sectors_min = NAND_MIN_SIZE / NAND_SECTOR_SIZE;
 
     // check the MBR for presence of a hidden partition
-    sdmmc_sdcard_readsectors(0, 1, buffer);
-    u32 hidden_sectors = getle32(buffer + 0x1BE + 0x8);
+    u32 hidden_sectors = NumHiddenSectors();
     
     if (nand_size_sectors_min < hidden_sectors) {
         // check for RedNAND type EmuNAND
@@ -567,7 +566,12 @@ u32 DumpNand(u32 param)
     u8* buffer = BUFFER_ADDRESS;
     u32 nand_size = getMMCDevice(0)->total_size * NAND_SECTOR_SIZE;
     u32 result = 0;
-
+    
+    
+    // check actual EmuNAND size
+    if (emunand_offset + getMMCDevice(0)->total_size > NumHiddenSectors())
+        nand_size = NAND_MIN_SIZE;
+    
     Debug("Dumping %sNAND. Size (MB): %u", (param & N_EMUNAND) ? "Emu" : "Sys", nand_size / (1024 * 1024));
     
     if (OutputFileNameSelector(filename, "NAND.bin", NULL) != 0)
@@ -674,7 +678,16 @@ u32 RestoreNand(u32 param)
 
     if (!(param & N_NANDWRITE)) // developer screwup protection
         return 1;
-    
+        
+    // check EmuNAND partition size
+    if (((NumHiddenSectors() - emunand_offset) * NAND_SECTOR_SIZE < NAND_MIN_SIZE) || (NumHiddenSectors() < emunand_header)) {
+        Debug("Error: Not enough space in EmuNAND partition");
+        return 1; // this really should not happen
+    } else if (emunand_offset + getMMCDevice(0)->total_size > NumHiddenSectors()) {
+        Debug("Small EmuNAND, using minimum size...");
+        nand_size = NAND_MIN_SIZE;
+    }
+        
     if (!(param & N_DIRECT)) {
         char filename[64];
         
@@ -689,6 +702,10 @@ u32 RestoreNand(u32 param)
 
         if (!FileOpen(filename))
             return 1;
+        if (FileGetSize() < nand_size) {
+            Debug("Small NAND backup, using minimum size...");
+            nand_size = NAND_MIN_SIZE;
+        }
         
         u32 n_sectors = nand_size / NAND_SECTOR_SIZE;
         for (u32 i = 0; i < n_sectors; i += SECTORS_PER_READ) {
@@ -713,6 +730,14 @@ u32 RestoreNand(u32 param)
         
         if (SetNand(true, false) != 0)
             return 1;
+        // check EmuNAND partition size take #2
+        if (((NumHiddenSectors() - emunand_offset) * NAND_SECTOR_SIZE < NAND_MIN_SIZE) || (NumHiddenSectors() < emunand_header)) {
+            Debug("Error: Not enough space in EmuNAND partition");
+            return 1; // this really should not happen
+        } else if (emunand_offset + getMMCDevice(0)->total_size > NumHiddenSectors()) {
+            Debug("Small EmuNAND, using minimum size...");
+            nand_size = NAND_MIN_SIZE;
+        }
         if (CheckNandIntegrity(NULL) != 0)
             return 1;
         ReadNandHeader(buffer);

@@ -327,3 +327,8 @@ uint64_t TotalStorageSpace()
 {
     return ClustersToBytes(&fs, fs.n_fatent - 2);
 }
+
+uint32_t NumHiddenSectors()
+{
+    return (uint32_t) fs.volbase - 1;
+}
