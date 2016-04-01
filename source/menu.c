@@ -234,10 +234,12 @@ u32 ProcessMenu(MenuInfo* info, u32 n_entries_main)
             mainMenu.entries[i].param = i;
         }
         mainMenu.n_entries = n_entries_main;
-        #ifndef BUILD_NAME
-        mainMenu.name = "Decrypt9 Main Menu";
-        #else
+        #if defined VERSION_NAME
+        mainMenu.name = VERSION_NAME;
+        #elif defined BUILD_NAME
         mainMenu.name = BUILD_NAME;
+        #else
+        mainMenu.name = "OTPHelper Main Menu";
         #endif
         currMenu = &mainMenu;
         menuLvlMin = 0;

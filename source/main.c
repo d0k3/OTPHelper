@@ -13,10 +13,10 @@ MenuInfo menu[] =
 {
     {
         #ifdef EXEC_OLDSPIDER
-        #ifndef BUILD_NAME
+        #ifndef VERSION_NAME
         "OTPHelper FW 2.1 Main Menu", 9,
         #else
-        BUILD_NAME, 9,
+        VERSION_NAME, 9,
         #endif
         {
             { "Dump otp.bin (0x100)",         DumpOtp,                0 },
@@ -30,10 +30,10 @@ MenuInfo menu[] =
             { "NAND XORpads...",              NULL,                   SUBMENU_START + 4 }
         }
         #else
-        #ifndef BUILD_NAME
+        #ifndef VERSION_NAME
         "OTPHelper N3DS Main Menu", 8,
         #else
-        BUILD_NAME, 8,
+        VERSION_NAME, 8,
         #endif
         {
             { "One Click Setup",              OneClickSetup,          N_NANDWRITE },
