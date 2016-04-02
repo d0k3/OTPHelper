@@ -132,18 +132,16 @@ u32 CheckNandIntegrity(const char* path)
 {
     // this only performs safety checks
     u8* buffer = BUFFER_ADDRESS;
-    u32 nand_size = getMMCDevice(0)->total_size * NAND_SECTOR_SIZE;
-    u32 nand_hdr_type = NAND_HDR_UNK;
     u32 ret = 0;
     
     if (path) {
         if (!DebugFileOpen(path))
             return 1;
-        if (nand_size != FileGetSize()) {
+        if (FileGetSize() < NAND_MIN_SIZE) {
             FileClose();
-            Debug("NAND backup has the wrong size!");
+            Debug("NAND backup is too small!");
             return 1;
-        };
+        }
         if(!DebugFileRead(buffer, 0x200, 0)) {
             FileClose();
             return 1;
@@ -152,7 +150,7 @@ u32 CheckNandIntegrity(const char* path)
         ReadNandHeader(buffer);
     }
     
-    nand_hdr_type = (ret == 0) ? CheckNandHeader(buffer) : 0;
+    u32 nand_hdr_type = (ret == 0) ? CheckNandHeader(buffer) : 0;
     if ((ret == 0) && (nand_hdr_type == NAND_HDR_UNK)) {
         Debug("NAND header not recognized!");
         ret = 1;
@@ -569,7 +567,7 @@ u32 DumpNand(u32 param)
     
     
     // check actual EmuNAND size
-    if (emunand_offset + getMMCDevice(0)->total_size > NumHiddenSectors())
+    if ((param & N_EMUNAND) && (emunand_offset + getMMCDevice(0)->total_size > NumHiddenSectors()))
         nand_size = NAND_MIN_SIZE;
     
     Debug("Dumping %sNAND. Size (MB): %u", (param & N_EMUNAND) ? "Emu" : "Sys", nand_size / (1024 * 1024));
@@ -692,7 +690,7 @@ u32 RestoreNand(u32 param)
         char filename[64];
         
         // user file select
-        if (InputFileNameSelector(filename, "NAND.bin", NULL, NULL, 0, nand_size) != 0)
+        if (InputFileNameSelector(filename, "NAND.bin", NULL, NULL, 0, 0) != 0)
             return 1;
         
         if (CheckNandIntegrity(filename) != 0)
