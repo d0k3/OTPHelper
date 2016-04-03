@@ -5,6 +5,9 @@
 bool InitFS();
 void DeinitFS();
 
+/** Checks if there is enough space free on the SD card **/
+bool DebugCheckFreeSpace(size_t required);
+
 /** Opens existing files */
 bool FileOpen(const char* path);
 bool DebugFileOpen(const char* path);

@@ -27,6 +27,16 @@ void DeinitFS()
     f_mount(NULL, "0:", 1);
 }
 
+bool DebugCheckFreeSpace(size_t required)
+{
+    if (required > RemainingStorageSpace()) {
+        Debug("Not enough space left on SD card");
+        return false;
+    }
+    
+    return true;
+}
+
 bool FileOpen(const char* path)
 {
     unsigned flags = FA_READ | FA_WRITE | FA_OPEN_EXISTING;
