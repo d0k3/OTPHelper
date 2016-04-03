@@ -678,12 +678,14 @@ u32 RestoreNand(u32 param)
         return 1;
         
     // check EmuNAND partition size
-    if (((NumHiddenSectors() - emunand_offset) * NAND_SECTOR_SIZE < NAND_MIN_SIZE) || (NumHiddenSectors() < emunand_header)) {
-        Debug("Error: Not enough space in EmuNAND partition");
-        return 1; // this really should not happen
-    } else if (emunand_offset + getMMCDevice(0)->total_size > NumHiddenSectors()) {
-        Debug("Small EmuNAND, using minimum size...");
-        nand_size = NAND_MIN_SIZE;
+    if (param & N_EMUNAND) {
+        if (((NumHiddenSectors() - emunand_offset) * NAND_SECTOR_SIZE < NAND_MIN_SIZE) || (NumHiddenSectors() < emunand_header)) {
+            Debug("Error: Not enough space in EmuNAND partition");
+            return 1; // this really should not happen
+        } else if (emunand_offset + getMMCDevice(0)->total_size > NumHiddenSectors()) {
+            Debug("Small EmuNAND, using minimum size...");
+            nand_size = NAND_MIN_SIZE;
+        }
     }
         
     if (!(param & N_DIRECT)) {
@@ -696,14 +698,14 @@ u32 RestoreNand(u32 param)
         if (CheckNandIntegrity(filename) != 0)
             return 1;
         
-        Debug("Restoring %sNAND. Size (MB): %u", (param & N_EMUNAND) ? "Emu" : "Sys", nand_size / (1024 * 1024));
-
         if (!FileOpen(filename))
             return 1;
         if (FileGetSize() < nand_size) {
             Debug("Small NAND backup, using minimum size...");
             nand_size = NAND_MIN_SIZE;
         }
+        
+        Debug("Restoring %sNAND. Size (MB): %u", (param & N_EMUNAND) ? "Emu" : "Sys", nand_size / (1024 * 1024));
         
         u32 n_sectors = nand_size / NAND_SECTOR_SIZE;
         for (u32 i = 0; i < n_sectors; i += SECTORS_PER_READ) {
