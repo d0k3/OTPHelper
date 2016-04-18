@@ -40,7 +40,7 @@
     
 // work files / directories
 // #define WORK_DIR "/Decrypt9"
-#define VERSION_NAME "OTPHelper v0.85"
+#define VERSION_NAME "OTPHelper v0.86"
 #define LOG_FILE "OTPHelper.log"
 
 inline u32 strchrcount(const char* str, char symbol) {

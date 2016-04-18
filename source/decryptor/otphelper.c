@@ -529,6 +529,26 @@ u32 OneClickSetup(u32 param)
     
     Debug("");
     
+    if (GetUnitPlatform() == PLATFORM_N3DS) {
+        Debug("This is a N3DS console.");
+        Debug("Are you 100% sure you turned WiFi on");
+        Debug("before starting this?");
+        Debug("If not, stop now, enable it and run");
+        Debug("One Click Setup again.");
+        Debug("");
+        Debug("Press <A> to continue, <B> to stop");
+        while (true) {
+            u32 pad_state = InputWait();
+            if (pad_state & BUTTON_A) {
+                break;
+            } else if (pad_state & BUTTON_B) {
+                Debug("Cancelled by user");
+                return 1;
+            }
+        }
+        Debug("");
+    }
+    
     if (SetNand(false, false) != 0) // set NAND back to sysNAND
         return 1;
         
