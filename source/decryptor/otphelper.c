@@ -530,7 +530,7 @@ u32 OneClickSetup(u32 param)
     Debug("");
     
     Debug("!!! MAKE SURE YOU TURNED WIFI ON !!!");
-    Debug("If you're not 100% sure you did, stop now,");
+    Debug("If you're not 100%% sure you did, stop now,");
     Debug("enable it and run One Click Setup again.");
     Debug("");
     Debug("Press <A> to continue, <B> to stop");
