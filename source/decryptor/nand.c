@@ -578,10 +578,15 @@ u32 DumpNand(u32 param)
     if (!DebugCheckFreeSpace(nand_size))
         return 1;
     
-    if (OutputFileNameSelector(filename, "NAND.bin", NULL) != 0)
-        return 1;
-    if (!DebugFileCreate(filename, true))
-        return 1;
+    if (param & N_NOASK) {
+        if (!DebugFileCreate((emunand_header) ? "emuNAND_auto.bin" : "sysNAND_auto.bin", true))
+            return 1;
+    } else {
+        if (OutputFileNameSelector(filename, "NAND.bin", NULL) != 0)
+            return 1;
+        if (!DebugFileCreate(filename, true))
+            return 1;
+    }
 
     u32 n_sectors = nand_size / NAND_SECTOR_SIZE;
     for (u32 i = 0; i < n_sectors; i += SECTORS_PER_READ) {

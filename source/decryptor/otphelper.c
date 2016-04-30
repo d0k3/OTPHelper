@@ -548,6 +548,28 @@ u32 OneClickSetup(u32 param)
     if (SetNand(false, false) != 0) // set NAND back to sysNAND
         return 1;
         
+    // check for SysNAND backup
+    if (FileOpen("sysNAND_original.bin") || FileOpen("sysNAND.bin")) {
+        FileClose(); // found backup, everything should be fine
+    } else {
+        Debug("Did you forget the SysNAND backup?");
+        Debug("THIS IS YOU LAST CHANCE TO BACKUP!");
+        Debug("");
+        Debug("Press <A> to backup to sysNAND_auto.bin");
+        Debug("Press <B> to skip (not recommended)");
+        while (true) {
+            u32 pad_state = InputWait();
+            if (pad_state & BUTTON_A) {
+                if (DumpNand(N_NOASK) != 0)
+                    return 1;
+                break;
+            } else if (pad_state & BUTTON_B) {
+                break;
+            }
+        }
+        Debug("");
+    }   
+        
     if (RestoreNand(param | N_DIRECT) != 0) {
         Debug("NAND clone to SysNAND failed!");
         Debug("You can not continue here and you");

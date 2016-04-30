@@ -20,8 +20,8 @@
 #define N_NANDFILE  (1<<26)
 // direct EmuNAND -> SysNAND clone
 #define N_DIRECT    (1<<27)
-// 'blind' NAND dump / restore -> unsure if we will use this
-#define N_BLIND     (1<<28)
+// dump without asking (append 'auto')
+#define N_NOASK     (1<<28)
 // these three are not handled by the feature functions
 // they have to be handled by the menu system
 #define N_EMUNAND   (1<<29)
