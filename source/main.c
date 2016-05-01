@@ -14,15 +14,16 @@ MenuInfo menu[] =
     {
         #ifdef EXEC_OLDSPIDER
         #ifndef VERSION_NAME
-        "OTPHelper FW 2.1 Main Menu", 9,
+        "OTPHelper FW 2.1 Main Menu", 10,
         #else
-        VERSION_NAME, 9,
+        VERSION_NAME, 10,
         #endif
         {
             { "Dump otp.bin (0x100)",         DumpOtp,                0 },
             { "Dump otp.bin (0x108)",         DumpOtp,                OTP_BIG },
             { "Validate otp.bin (0x100)",     CheckOtp,               0 },
             { "Validate otp.bin (0x108)",     CheckOtp,               OTP_BIG },
+            { "Unbrick FW 9.x EmuNAND",       UnbrickNand,            OTP_TO_N3DS | HDR_FROM_MEM | N_EMUNAND | N_NANDWRITE },
             { "NAND Validation Options...",   NULL,                   SUBMENU_START + 0 },
             { "NAND Backup & Restore...",     NULL,                   SUBMENU_START + 1 },
             { "CTRNAND Dump & Inject...",     NULL,                   SUBMENU_START + 2 },
@@ -31,13 +32,14 @@ MenuInfo menu[] =
         }
         #else
         #ifndef VERSION_NAME
-        "OTPHelper N3DS Main Menu", 8,
+        "OTPHelper N3DS Main Menu", 9,
         #else
-        VERSION_NAME, 8,
+        VERSION_NAME, 9,
         #endif
         {
             { "One Click Setup",              OneClickSetup,          N_NANDWRITE },
             { "Unbrick FW 2.1 EmuNAND",       UnbrickNand,            HDR_FROM_MEM | N_EMUNAND | N_NANDWRITE },
+            { "Unbrick FW 9.x EmuNAND",       UnbrickNand,            OTP_TO_N3DS | HDR_FROM_MEM | N_EMUNAND | N_NANDWRITE },
             { "otp.bin -> otp0x108.bin",      ExpandOtp,              0 },
             { "NAND Validation Options...",   NULL,                   SUBMENU_START + 0 },
             { "NAND Backup & Restore...",     NULL,                   SUBMENU_START + 1 },

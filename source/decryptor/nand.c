@@ -382,7 +382,7 @@ u32 SetupNandCrypto(u8* ctr, u32 offset)
         
         Debug("NAND CID: %08X%08X%08X%08X", getbe32(NandCid), getbe32(NandCid+4), getbe32(NandCid+8), getbe32(NandCid+12));
         
-        #ifndef EXEC_OLDSPIDER
+        /*#ifndef EXEC_OLDSPIDER
         // part #2: TWL KEY
         // see: https://www.3dbrew.org/wiki/Memory_layout#ARM9_ITCM
         u32* TwlCustId = (u32*) (0x01FFB808);
@@ -407,7 +407,7 @@ u32 SetupNandCrypto(u8* ctr, u32 offset)
         setup_aeskeyX(0x03, TwlKeyX);
         setup_aeskeyY(0x03, TwlKeyY);
         use_aeskey(0x03);
-        #endif
+        #endif*/
         
         // part #3: CTRNAND N3DS KEY
         while (GetUnitPlatform() == PLATFORM_N3DS) {
