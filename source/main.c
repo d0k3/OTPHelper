@@ -23,7 +23,7 @@ MenuInfo menu[] =
             { "Dump otp.bin (0x108)",         DumpOtp,                OTP_BIG },
             { "Validate otp.bin (0x100)",     CheckOtp,               0 },
             { "Validate otp.bin (0x108)",     CheckOtp,               OTP_BIG },
-            { "Unbrick FW 9.x EmuNAND",       UnbrickNand,            OTP_TO_N3DS | HDR_FROM_MEM | N_EMUNAND | N_NANDWRITE },
+            { "Unbrick FW 9.x EmuNAND",       UnbrickNand,            OTP_TO_N3DS | N_EMUNAND | N_NANDWRITE },
             { "NAND Validation Options...",   NULL,                   SUBMENU_START + 0 },
             { "NAND Backup & Restore...",     NULL,                   SUBMENU_START + 1 },
             { "CTRNAND Dump & Inject...",     NULL,                   SUBMENU_START + 2 },
@@ -39,7 +39,7 @@ MenuInfo menu[] =
         {
             { "One Click Setup",              OneClickSetup,          N_NANDWRITE },
             { "Unbrick FW 2.1 EmuNAND",       UnbrickNand,            HDR_FROM_MEM | N_EMUNAND | N_NANDWRITE },
-            { "Unbrick FW 9.x EmuNAND",       UnbrickNand,            OTP_TO_N3DS | HDR_FROM_MEM | N_EMUNAND | N_NANDWRITE },
+            { "Unbrick FW 9.x EmuNAND",       UnbrickNand,            OTP_TO_N3DS | N_EMUNAND | N_NANDWRITE },
             { "otp.bin -> otp0x108.bin",      ExpandOtp,              0 },
             { "NAND Validation Options...",   NULL,                   SUBMENU_START + 0 },
             { "NAND Backup & Restore...",     NULL,                   SUBMENU_START + 1 },
