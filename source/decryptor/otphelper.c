@@ -175,7 +175,7 @@ u32 SwitchCtrNandCrypto(u32 param)
         return 1;
     }
     
-    Debug("Switching CTRNAND partion 0x%u -> 0x%u...", (to_o3ds) ? 5 : 4, (to_o3ds) ? 4 : 5);
+    Debug("Switching CTRNAND partition 0x%u -> 0x%u...", (to_o3ds) ? 5 : 4, (to_o3ds) ? 4 : 5);
     u32 size = partition_from->size;
     u32 offset = partition_from->offset;
     u32 result = 0;
