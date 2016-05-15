@@ -523,13 +523,13 @@ u32 OneClickSetup(u32 param)
         }
     } else if (dg_state != 0) {
         Debug("Downgrade Validation failed!");
-        Debug("You can not continue here");
+        Debug("You cannot continue here");
         return 1;
     }
     
     Debug("");
     
-    Debug("!!! MAKE SURE YOU TURNED WIFI ON !!!");
+    Debug("!!! MAKE SURE YOU TURN WIFI ON !!!");
     Debug("If you're not 100%% sure you did, stop now,");
     Debug("enable it and run One Click Setup again.");
     Debug("");
@@ -553,7 +553,7 @@ u32 OneClickSetup(u32 param)
         FileClose(); // found backup, everything should be fine
     } else {
         Debug("Did you forget the SysNAND backup?");
-        Debug("THIS IS YOU LAST CHANCE TO BACKUP!");
+        Debug("THIS IS YOUR LAST CHANCE TO BACKUP!");
         Debug("");
         Debug("Press <A> to backup to sysNAND_auto.bin");
         Debug("Press <B> to skip (not recommended)");
@@ -572,7 +572,7 @@ u32 OneClickSetup(u32 param)
         
     if (RestoreNand(param | N_DIRECT) != 0) {
         Debug("NAND clone to SysNAND failed!");
-        Debug("You can not continue here and you");
+        Debug("You cannot continue here and you");
         Debug("may need to restore your SysNAND");
         return 1;
     }
