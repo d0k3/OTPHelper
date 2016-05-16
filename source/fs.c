@@ -40,12 +40,15 @@ bool DebugCheckFreeSpace(size_t required)
 bool FileOpen(const char* path)
 {
     unsigned flags = FA_READ | FA_WRITE | FA_OPEN_EXISTING;
+    unsigned flags_ro = FA_READ | FA_OPEN_EXISTING;
     if (*path == '/')
         path++;
-    bool ret = (f_open(&file, path, flags) == FR_OK);
+    bool ret = (f_open(&file, path, flags) == FR_OK) ||
+        (f_open(&file, path, flags_ro) == FR_OK);
     #ifdef WORK_DIR
     f_chdir("/"); // temporarily change the current directory
-    if (!ret) ret = (f_open(&file, path, flags) == FR_OK);
+    if (!ret) ret = (f_open(&file, path, flags) == FR_OK) ||
+        (f_open(&file, path, flags_ro) == FR_OK);
     f_chdir(WORK_DIR);
     #endif
     f_lseek(&file, 0);
