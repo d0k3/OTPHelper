@@ -529,22 +529,6 @@ u32 OneClickSetup(u32 param)
     
     Debug("");
     
-    Debug("!!! MAKE SURE WIFI IS TURNED ON !!!");
-    Debug("If you're not 100%% sure it is, stop now,");
-    Debug("enable it and run One Click Setup again.");
-    Debug("");
-    Debug("Press <A> to continue, <B> to stop");
-    while (true) {
-        u32 pad_state = InputWait();
-        if (pad_state & BUTTON_A) {
-            break;
-        } else if (pad_state & BUTTON_B) {
-            Debug("Cancelled by user");
-            return 1;
-        }
-    }
-    Debug("");
-    
     if (SetNand(false, false) != 0) // set NAND back to sysNAND
         return 1;
         
