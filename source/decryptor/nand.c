@@ -860,10 +860,9 @@ u32 ValidateNand(u32 param)
         if (CheckNandIntegrity(NULL) != 0)
             return 1;
     } else {
-        u32 nand_size = getMMCDevice(0)->total_size * NAND_SECTOR_SIZE;
         char filename[64];
         // user file select
-        if (InputFileNameSelector(filename, "NAND.bin", NULL, NULL, 0, nand_size) != 0)
+        if (InputFileNameSelector(filename, "NAND.bin", NULL, NULL, 0, 0) != 0)
             return 1;
         if (CheckNandIntegrity(filename) != 0)
             return 1;
