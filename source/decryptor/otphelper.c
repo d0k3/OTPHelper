@@ -277,6 +277,53 @@ u32 InjectNandHeader(u32 param)
     return 0;
 }
 
+u32 DumpEmergencyFiles(u32 param)
+{
+    static const char* dump_name[] = {
+        "SecureInfo_A_emergency", "movable_emergency.sed",
+        "title_emergency.db", "ticket_emergency.db"
+    };
+    static const char* dump_path[] = {
+        "RW         SYS        SECURE~?   ", "PRIVATE    MOVABLE SED",
+        "DBS        TITLE   DB ", "DBS        TICKET  DB "
+    };
+    static const u32 n_dump_files = sizeof(dump_name) / sizeof(char*);
+    PartitionInfo* ctrnand_info = GetPartitionInfo(P_CTRNAND);
+    u32 result = 0;
+    
+    Debug("Dumping emergency files...");
+    
+    // NAND header
+    #ifdef EXEC_OLDSPIDER
+    if (GetUnitPlatform() == PLATFORM_N3DS) {
+        Debug("N3DS Header can't be dumped on 2.1");
+        Debug("Failed!");
+        result = 1;
+    } else {
+        result |= DumpNandHeader(param);
+        Debug((result == 0) ? "Done!" : "Failed!");
+    }
+    #else
+    result |= DumpNandHeader(param);
+    Debug((result == 0) ? "Done!" : "Failed!");
+    #endif
+    
+    // other dump files
+    for (u32 i = 0; i < n_dump_files; i++) {
+        u32 offset;
+        u32 size;
+        if ((SeekFileInNand(&offset, &size, dump_path[i], ctrnand_info, NULL) != 0) ||
+            (DecryptNandToFile(dump_name[i], offset, size, ctrnand_info) != 0)) {
+            Debug("Failed!");
+            result = 1;
+        } else {
+            Debug ("Done!");
+        }
+    }
+    
+    return result;
+}
+
 u32 UnbrickNand(u32 param)
 {   
     // switch CTRNAND crypto
@@ -552,7 +599,10 @@ u32 OneClickSetup(u32 param)
             }
         }
         Debug("");
-    }   
+    }
+    
+    // dump emergency files - this is unchecked
+    DumpEmergencyFiles(0);
         
     if (RestoreNand(param | N_DIRECT) != 0) {
         Debug("NAND clone to SysNAND failed!");
