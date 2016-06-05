@@ -9,15 +9,12 @@ static DIR dir;
 
 bool InitFS()
 {
-#ifndef EXEC_GATEWAY
-    // TODO: Magic?
-    *(u32*)0x10000020 = 0;
-    *(u32*)0x10000020 = 0x340;
-#endif
-    bool ret = (f_mount(&fs, "0:", 0) == FR_OK);
-#ifdef WORK_DIR
-    f_chdir(WORK_DIR);
-#endif
+    bool ret = (f_mount(&fs, "0:", 1) == FR_OK);
+    #ifdef WORK_DIR
+    if (ret)
+        f_chdir(WORK_DIR);
+    #endif
+
     return ret;
 }
 
@@ -60,7 +57,7 @@ bool DebugFileOpen(const char* path)
 {
     Debug("Opening %s ...", path);
     if (!FileOpen(path)) {
-        Debug("Could not open %s!", path);
+        Debug("Could not open %s", path);
         return false;
     }
     
@@ -69,6 +66,10 @@ bool DebugFileOpen(const char* path)
 
 bool FileCreate(const char* path, bool truncate)
 {
+    #ifdef WORK_DIR
+    if (!truncate && FileOpen(path))
+        return true;
+    #endif
     unsigned flags = FA_READ | FA_WRITE;
     flags |= truncate ? FA_CREATE_ALWAYS : FA_OPEN_ALWAYS;
     if (*path == '/')
@@ -80,9 +81,9 @@ bool FileCreate(const char* path, bool truncate)
 }
 
 bool DebugFileCreate(const char* path, bool truncate) {
-    Debug("Creating %s ...", path);
+    Debug("%s %s ...", truncate ? "Creating" : "Opening", path);
     if (!FileCreate(path, truncate)) {
-        Debug("Could not create %s!", path);
+        Debug("Could not create %s", path);
         return false;
     }
 
@@ -117,10 +118,11 @@ size_t FileCopyTo(const char* dest, void* buf, size_t bufsize)
         UINT bytes_read = 0;
         UINT bytes_written = 0;
         ShowProgress(pos, fsize);
-        f_read(&file, buf, bufsize, &bytes_read);
-        f_write(&dfile, buf, bytes_read, &bytes_written);
-        if (bytes_read != bytes_written) {
+        if ((f_read(&file, buf, bufsize, &bytes_read) != FR_OK) ||
+            (f_write(&dfile, buf, bytes_read, &bytes_written) != FR_OK) ||
+            (bytes_read != bytes_written)) {
             result = 0;
+            break;
         }
     }
     ShowProgress(0, 0);
@@ -129,17 +131,19 @@ size_t FileCopyTo(const char* dest, void* buf, size_t bufsize)
 }
 
 size_t FileRead(void* buf, size_t size, size_t foffset)
-{
+{if (size == 0)
+        return 0;
     UINT bytes_read = 0;
     f_lseek(&file, foffset);
-    f_read(&file, buf, size, &bytes_read);
+    if (f_read(&file, buf, size, &bytes_read) != FR_OK)
+        return 0;
     return bytes_read;
 }
 
 bool DebugFileRead(void* buf, size_t size, size_t foffset) {
     size_t bytesRead = FileRead(buf, size, foffset);
     if(bytesRead != size) {
-        Debug("ERROR, file is too small!");
+        Debug("File too small or SD failure");
         return false;
     }
     
@@ -148,9 +152,12 @@ bool DebugFileRead(void* buf, size_t size, size_t foffset) {
 
 size_t FileWrite(void* buf, size_t size, size_t foffset)
 {
+    if (size == 0)
+        return 0;
     UINT bytes_written = 0;
     f_lseek(&file, foffset);
-    f_write(&file, buf, size, &bytes_written);
+    if (f_write(&file, buf, size, &bytes_written) != FR_OK)
+        return 0;
     f_sync(&file);
     return bytes_written;
 }
@@ -159,7 +166,7 @@ bool DebugFileWrite(void* buf, size_t size, size_t foffset)
 {
     size_t bytesWritten = FileWrite(buf, size, foffset);
     if(bytesWritten != size) {
-        Debug("ERROR, SD card may be full!");
+        Debug("SD failure or SD full");
         return false;
     }
     
@@ -276,6 +283,51 @@ bool GetFileList(const char* path, char* list, int lsize, bool recursive, bool i
     return GetFileListWorker(&list, &lsize, fpath, 256, recursive, inc_files, inc_dirs);
 }
 
+size_t FileGetData(const char* path, void* buf, size_t size, size_t foffset)
+{
+    unsigned flags = FA_READ | FA_OPEN_EXISTING;
+    FIL tmp_file;
+    if (*path == '/')
+        path++;
+    bool exists = (f_open(&tmp_file, path, flags) == FR_OK);
+    #ifdef WORK_DIR
+    if (!exists) {
+        f_chdir("/"); // temporarily change the current directory
+        exists = (f_open(&tmp_file, path, flags) == FR_OK);
+        f_chdir(WORK_DIR);
+    }
+    #endif
+    if (exists) {
+        UINT bytes_read = 0;
+        bool res = false;
+        f_lseek(&tmp_file, foffset);
+        f_sync(&tmp_file);
+        res = (f_read(&tmp_file, buf, size, &bytes_read) == FR_OK);
+        f_close(&tmp_file);
+        return (res) ? bytes_read : 0;
+    }
+    
+    return 0;
+}
+
+size_t FileDumpData(const char* path, void* buf, size_t size)
+{
+    unsigned flags = FA_WRITE | FA_CREATE_ALWAYS;
+    FIL tmp_file;
+    UINT bytes_written = 0;;
+    bool res = false;
+    if (*path == '/')
+        path++;
+    if (f_open(&tmp_file, path, flags) != FR_OK)
+        return 0;
+    f_lseek(&tmp_file, 0);
+    f_sync(&tmp_file);
+    res = (f_write(&tmp_file, buf, size, &bytes_written) == FR_OK);
+    f_close(&tmp_file);
+    
+    return (res) ? bytes_written : 0;
+}
+
 size_t LogWrite(const char* text)
 {
     #ifdef LOG_FILE
@@ -284,7 +336,6 @@ size_t LogWrite(const char* text)
     static size_t lstart = 0;
     
     if ((text == NULL) && lready) {
-        f_sync(&lfile);
         f_close(&lfile);
         lready = false;
         return lstart; // return the current log start
@@ -318,11 +369,11 @@ size_t LogWrite(const char* text)
 static uint64_t ClustersToBytes(FATFS* fs, DWORD clusters)
 {
     uint64_t sectors = clusters * fs->csize;
-#if _MAX_SS != _MIN_SS
+    #if _MAX_SS != _MIN_SS
     return sectors * fs->ssize;
-#else
+    #else
     return sectors * _MAX_SS;
-#endif
+    #endif
 }
 
 uint64_t RemainingStorageSpace()
