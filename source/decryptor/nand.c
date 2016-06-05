@@ -5,6 +5,7 @@
 #include "decryptor/aes.h"
 #include "decryptor/sha.h"
 #include "decryptor/decryptor.h"
+#include "decryptor/hashfile.h"
 #include "decryptor/nand.h"
 #include "decryptor/otphelper.h"
 #include "fatfs/sdmmc.h"
@@ -180,7 +181,16 @@ u32 CheckNandIntegrity(const char* path)
         }
     }
     
-    if (path) FileClose();
+    if (path) {
+        FileClose();
+        Debug("Verifying dump via .SHA...");
+        u32 hash_res = HashVerifyFile(path);
+        if (hash_res == HASH_FAILED) {
+            Debug("Failed, file is corrupt!");
+            return 1;
+        }
+        Debug((hash_res == HASH_VERIFIED) ? "Verification passed" : ".SHA not found, skipped");
+    }
     
     return ret;
 }
@@ -588,6 +598,7 @@ u32 DumpNand(u32 param)
             return 1;
     }
 
+    sha_init(SHA256_MODE);
     u32 n_sectors = nand_size / NAND_SECTOR_SIZE;
     for (u32 i = 0; i < n_sectors; i += SECTORS_PER_READ) {
         u32 read_sectors = min(SECTORS_PER_READ, (n_sectors - i));
@@ -597,10 +608,20 @@ u32 DumpNand(u32 param)
             result = 1;
             break;
         }
+        sha_update(buffer, NAND_SECTOR_SIZE * read_sectors);
     }
 
     ShowProgress(0, 0);
     FileClose();
+    
+    if (result == 0) {
+        char hashname[64];
+        u8 shasum[32];
+        sha_get(shasum);
+        Debug("NAND dump SHA256: %08X...", getbe32(shasum));
+        snprintf(hashname, 64, "%s.sha", filename);
+        Debug("Store to %s: %s", hashname, (FileDumpData(hashname, shasum, 32) == 32) ? "ok" : "failed");
+    }
 
     return result;
 }
