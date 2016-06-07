@@ -308,6 +308,14 @@ u32 DumpEmergencyFiles(u32 param)
     Debug((result == 0) ? "Done!" : "Failed!");
     #endif
     
+    // FIRM0FIRM1 XORpad
+    if (Firm0Firm1Padgen(0) == 0) {
+        Debug("Done!");
+    } else {
+        Debug("Failed!");
+        result = 1;
+    }
+    
     // other dump files
     for (u32 i = 0; i < n_dump_files; i++) {
         u32 offset;
