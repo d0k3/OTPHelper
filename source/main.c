@@ -32,11 +32,10 @@ MenuInfo menu[] =
         #ifndef VERSION_NAME
         "OTPHelper N3DS Main Menu", 8,
         #else
-        VERSION_NAME, 7,
+        VERSION_NAME, 6,
         #endif
         {
             { "One Click Setup",              OneClickSetup,          N_NANDWRITE },
-            { "Unbrick FW 2.1 EmuNAND",       UnbrickNand,            HDR_FROM_MEM | N_EMUNAND | N_NANDWRITE },
             { "otp.bin -> otp0x108.bin",      ExpandOtp,              0 },
             { "NAND Validation Options...",   NULL,                   SUBMENU_START + 0 },
             { "NAND Backup & Restore...",     NULL,                   SUBMENU_START + 1 },
