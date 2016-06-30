@@ -789,8 +789,10 @@ u32 RestoreNand(u32 param)
                 Debug("SD card read failure");
                 return 1;
             }
-            if (WriteNandSectors(i, read_sectors, buffer) != 0)
+            if (WriteNandSectors(i, read_sectors, buffer) != 0) {
+                Debug((emunand_header) ? "SD card write failure" : "SysNAND write failure");
                 return 1;
+            }
         }
     }
     
