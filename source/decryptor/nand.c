@@ -268,12 +268,6 @@ u32 InputFileNameSelector(char* filename, const char* basename, char* extension,
     char* fnlist = (char*) 0x20408000; // allow using 0x80000 byte
     u32 n_names = 0;
     
-    // get the file list
-    if (!GetFileList("/", fnlist, 0x800000, false, true, false)) {
-        Debug("Failed retrieving the file names list");
-        return 1;
-    }
-    
     // get base name, extension
     char base[64] = { 0 };
     if (basename != NULL) {
@@ -291,41 +285,51 @@ u32 InputFileNameSelector(char* filename, const char* basename, char* extension,
     if (msize > 0x200)
         msize = 0x200;
     
-    // parse the file names list for usable entries
-    for (char* fn = strtok(fnlist, "\n"); fn != NULL; fn = strtok(NULL, "\n")) {
-        u8 data[0x200];
-        char* dotpos = strrchr(fn, '.');
-        if (strrchr(fn, '/'))
-            fn = strrchr(fn, '/') + 1;
-        if (strnlen(fn, 128) > 63)
-            continue; // file name too long
-        if ((basename != NULL) && !strcasestr(fn, base))
-            continue; // basename check failed
-        if ((extension != NULL) && (dotpos != NULL) && (strncasecmp(dotpos + 1, extension, strnlen(extension, 16))))
-            continue; // extension check failed
-        else if ((extension == NULL) != (dotpos == NULL))
-            continue; // extension check failed
-        if (!FileOpen(fn))
-            continue; // file can't be opened
-        if (fsize && (FileGetSize() != fsize)) {
+    // pass #1 -> work dir
+    // pass #2 -> root dir
+    for (u32 i = 0; i < 2; i++) {
+        // get the file list - try work directory first
+        if (!GetFileList((i) ? "/" : GetWorkDir(), fnlist, 0x80000, false, true, false))
+            continue;
+        
+        // parse the file names list for usable entries
+        for (char* fn = strtok(fnlist, "\n"); fn != NULL; fn = strtok(NULL, "\n")) {
+            u8 data[0x200];
+            char* dotpos = strrchr(fn, '.');
+            if (strrchr(fn, '/'))
+                fn = strrchr(fn, '/') + 1;
+            if (strnlen(fn, 128) > 63)
+                continue; // file name too long
+            if ((basename != NULL) && !strcasestr(fn, base))
+                continue; // basename check failed
+            if ((extension != NULL) && (dotpos != NULL) && (strncasecmp(dotpos + 1, extension, strnlen(extension, 16))))
+                continue; // extension check failed
+            else if ((extension == NULL) != (dotpos == NULL))
+                continue; // extension check failed
+            if (!FileOpen(fn))
+                continue; // file can't be opened
+            if (fsize && (FileGetSize() < fsize)) {
+                FileClose();
+                continue; // file minimum size check failed
+            }
+            if (msize) {
+                if (FileRead(data, msize, 0) != msize) {
+                    FileClose();
+                    continue; // can't be read
+                }
+                if (memcmp(data, magic, msize) != 0) {
+                    FileClose();
+                    continue; // magic number does not match
+                }
+            }
             FileClose();
-            continue; // file size check failed
+            // this is a match - keep it
+            fnptr[n_names++] = fn;
+            if (n_names * sizeof(char**) >= 0x8000)
+                return 1;
         }
-        if (msize) {
-            if (FileRead(data, msize, 0) != msize) {
-                FileClose();
-                continue; // can't be read
-            }
-            if (memcmp(data, magic, msize) != 0) {
-                FileClose();
-                continue; // magic number does not match
-            }
-        }
-        FileClose();
-        // this is a match - keep it
-        fnptr[n_names++] = fn;
-        if (n_names * sizeof(char**) >= 0x8000)
-            return 1;
+        if (n_names)
+            break;
     }
     if (n_names == 0) {
         Debug("No usable file found");

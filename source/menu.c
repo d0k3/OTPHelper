@@ -107,6 +107,7 @@ void DrawMenu(MenuInfo* currMenu, u32 index, bool fullDraw, bool subMenu)
         DrawStringF(menublock_x0, menublock_y1 + 30, top_screen, "START+\x1A\x1B:  Reboot/Shutdown");
         DrawStringF(menublock_x0, SCREEN_HEIGHT - 30, top_screen, "SD card: %lluMB/%lluMB", RemainingStorageSpace() / 1024 / 1024, TotalStorageSpace() / 1024 / 1024);
         DrawStringF(menublock_x0, SCREEN_HEIGHT - 20, top_screen, "SD EmuNAND: %s", (emunand_state == EMUNAND_READY) ? "EmuNAND ready" : (emunand_state == EMUNAND_GATEWAY) ? "GW EmuNAND" : (emunand_state == EMUNAND_REDNAND) ? "RedNAND" : (emunand_state > 3) ? "MultiNAND" : "no EmuNAND");
+        DrawStringF(menublock_x0, SCREEN_HEIGHT - 40, top_screen, "Work directory: %s", GetWorkDir());
     }
     
     if (!top_screen) {

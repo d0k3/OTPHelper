@@ -38,10 +38,8 @@
 #define align(v,a) \
     (((v) % (a)) ? ((v) + (a) - ((v) % (a))) : (v))
     
-// work files / directories
-// #define WORK_DIR "/Decrypt9"
-#define VERSION_NAME "OTPHelper v0.90"
-#define LOG_FILE "OTPHelper.log"
+// app info
+#define VERSION_NAME "OTPHelper v0.91"
 
 inline u32 strchrcount(const char* str, char symbol) {
     u32 count = 0;
