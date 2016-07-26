@@ -280,11 +280,11 @@ u32 InjectNandHeader(u32 param)
 u32 DumpEmergencyFiles(u32 param)
 {
     static const char* dump_name[] = {
-        "emergency_SecureInfo_A", "emergency_movable.sed",
+        "emergency_SecureInfo_A", "emergency_movable.sed", "emergency_LocalFriendCodeSeed_B",
         "emergency_title.db", "emergency_ticket.db"
     };
     static const char* dump_path[] = {
-        "RW         SYS        SECURE~?   ", "PRIVATE    MOVABLE SED",
+        "RW         SYS        SECURE~?   ", "PRIVATE    MOVABLE SED", "RW         SYS        LOCALF~?   ",
         "DBS        TITLE   DB ", "DBS        TICKET  DB "
     };
     static const u32 n_dump_files = sizeof(dump_name) / sizeof(char*);
